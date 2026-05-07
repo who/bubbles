@@ -159,4 +159,32 @@ describe('computeClosedTickers (PRD §6.2 ticker aggregation)', () => {
     if (!t) throw new Error('missing ticker');
     expect(t.pctReturn).toBe(0);
   });
+
+  test('single-contract ticker — one contract aggregates to a 1-contract ticker echoing its values', () => {
+    const only = contract({
+      instrument: 'NVDA',
+      description: 'NVDA 6/19/2026 Call $120.00',
+      pl: 250,
+      costBasis: 500,
+      closedQty: 5,
+      grossVolume: 1250,
+      openDate: new Date('2026-05-01T00:00:00Z'),
+      closeDate: new Date('2026-05-20T00:00:00Z'),
+    });
+
+    const tickers = computeClosedTickers([only]);
+
+    expect(tickers).toHaveLength(1);
+    const [t] = tickers;
+    if (!t) throw new Error('missing ticker');
+    expect(t.instrument).toBe('NVDA');
+    expect(t.contracts).toBe(1);
+    expect(t.pl).toBeCloseTo(250, TOLERANCE_DIGITS);
+    expect(t.costBasis).toBeCloseTo(500, TOLERANCE_DIGITS);
+    expect(t.closedQty).toBe(5);
+    expect(t.grossVolume).toBeCloseTo(1250, TOLERANCE_DIGITS);
+    expect(t.pctReturn).toBeCloseTo(50, TOLERANCE_DIGITS);
+    expect(t.openDate.toISOString()).toBe('2026-05-01T00:00:00.000Z');
+    expect(t.closeDate.toISOString()).toBe('2026-05-20T00:00:00.000Z');
+  });
 });
