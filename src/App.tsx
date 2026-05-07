@@ -1,20 +1,48 @@
-import { useState } from 'react';
-import { FileDropzone } from './components/index.ts';
+import { useCallback, useState } from 'react';
+import { FileDropzone, StatsStrip } from './components/index.ts';
+import { parseCsv } from './parsing/index.ts';
+import { computeClosedContracts, computeSummary } from './pnl/index.ts';
+import type { Summary } from './pnl/index.ts';
 import './App.css';
 
+type Status = 'empty' | 'parsing' | 'results' | 'error';
+
 function App() {
-  const [acceptedFile, setAcceptedFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<Status>('empty');
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
 
-  const handleFile = (file: File) => {
+  const handleFile = useCallback(async (file: File) => {
+    setStatus('parsing');
     setError(null);
-    setAcceptedFile(file);
-  };
+    setSummary(null);
+    setWarnings([]);
+    setFileName(file.name);
 
-  const handleError = (message: string) => {
-    setAcceptedFile(null);
+    try {
+      const { trades, warnings: parseWarnings } = await parseCsv(file);
+      const contracts = computeClosedContracts(trades);
+      const computed = computeSummary(contracts, parseWarnings);
+      setSummary(computed);
+      setWarnings(parseWarnings);
+      setStatus('results');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to parse CSV.';
+      setError(message);
+      setSummary(null);
+      setWarnings([]);
+      setStatus('error');
+    }
+  }, []);
+
+  const handleError = useCallback((message: string) => {
     setError(message);
-  };
+    setSummary(null);
+    setWarnings([]);
+    setStatus('error');
+  }, []);
 
   return (
     <main className="app">
@@ -25,8 +53,25 @@ function App() {
         </p>
       ) : null}
       <FileDropzone onFile={handleFile} onError={handleError} />
-      {acceptedFile ? (
-        <p className="app__accepted">Loaded: {acceptedFile.name}</p>
+      {status === 'parsing' && fileName ? (
+        <p className="app__status" role="status">
+          Parsing
+          {' '}
+          {fileName}
+          …
+        </p>
+      ) : null}
+      {status === 'results' && summary ? (
+        <>
+          <StatsStrip summary={summary} />
+          {warnings.length > 0 ? (
+            <ul className="app__warnings" role="status">
+              {warnings.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          ) : null}
+        </>
       ) : null}
     </main>
   );
