@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FileDropzone, StatsStrip } from './components/index.ts';
 import { parseCsv } from './parsing/index.ts';
 import { computeClosedContracts, computeSummary } from './pnl/index.ts';
@@ -9,12 +9,31 @@ type Status = 'empty' | 'parsing' | 'results' | 'error';
 
 const METHODOLOGY_TEXT = 'Realized P/L is computed from matched BTO/STC pairs per contract using proportional cost allocation. Open positions and BTC/STO/OEXP/CDIV transactions are excluded.';
 
+const PROGRESS_BAR_DELAY_MS = 2000;
+
+const ROW_COUNT_FORMATTER = new Intl.NumberFormat('en-US');
+
 function App() {
   const [status, setStatus] = useState<Status>('empty');
   const [summary, setSummary] = useState<Summary | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [rowsParsed, setRowsParsed] = useState(0);
+  const [bytesProcessed, setBytesProcessed] = useState(0);
+  const [totalBytes, setTotalBytes] = useState(0);
+  const [showProgressBar, setShowProgressBar] = useState(false);
+
+  useEffect(() => {
+    if (status !== 'parsing') {
+      setShowProgressBar(false);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      setShowProgressBar(true);
+    }, PROGRESS_BAR_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [status]);
 
   const handleFile = useCallback(async (file: File) => {
     setStatus('parsing');
@@ -22,9 +41,18 @@ function App() {
     setSummary(null);
     setWarnings([]);
     setFileName(file.name);
+    setRowsParsed(0);
+    setBytesProcessed(0);
+    setTotalBytes(file.size);
 
     try {
-      const { trades, warnings: parseWarnings } = await parseCsv(file);
+      const { trades, warnings: parseWarnings } = await parseCsv(file, {
+        onProgress: ({ rowsProcessed, bytesProcessed: bp, totalBytes: tb }) => {
+          setRowsParsed(rowsProcessed);
+          setBytesProcessed(bp);
+          setTotalBytes(tb);
+        },
+      });
       const contracts = computeClosedContracts(trades);
       const computed = computeSummary(contracts, parseWarnings);
       setSummary(computed);
@@ -52,10 +80,16 @@ function App() {
     setWarnings([]);
     setError(null);
     setFileName(null);
+    setRowsParsed(0);
+    setBytesProcessed(0);
+    setTotalBytes(0);
   }, []);
 
   const showResults = status === 'results' && summary;
-  const showDropzone = status !== 'results';
+  const showDropzone = status === 'empty' || status === 'error';
+  const progressPercent = totalBytes > 0
+    ? Math.min(100, Math.max(0, (bytesProcessed / totalBytes) * 100))
+    : 0;
 
   return (
     <main className="app">
@@ -69,12 +103,24 @@ function App() {
         <FileDropzone onFile={handleFile} onError={handleError} />
       ) : null}
       {status === 'parsing' && fileName ? (
-        <p className="app__status" role="status">
-          Parsing
-          {' '}
-          {fileName}
-          …
-        </p>
+        <div className="app__processing" role="status" aria-live="polite">
+          <p className="app__status">
+            Parsing
+            {' '}
+            {ROW_COUNT_FORMATTER.format(rowsParsed)}
+            {' '}
+            {rowsParsed === 1 ? 'row' : 'rows'}
+            …
+          </p>
+          {showProgressBar ? (
+            <progress
+              className="app__progress"
+              value={progressPercent}
+              max={100}
+              aria-label="Parse progress"
+            />
+          ) : null}
+        </div>
       ) : null}
       {showResults ? (
         <>

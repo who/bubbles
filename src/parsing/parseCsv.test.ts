@@ -327,3 +327,35 @@ describe('parseCsv file-level validation (PRD §9)', () => {
     expect(warnings).toEqual([]);
   });
 });
+
+describe('parseCsv onProgress callback', () => {
+  test('fires onProgress for each parsed row with rowsProcessed + bytes + totalBytes', async () => {
+    const file = makeFile(FIXTURE_5_ROWS);
+    const calls: Array<{ rowsProcessed: number; bytesProcessed: number; totalBytes: number }> = [];
+    const { trades } = await parseCsv(file, {
+      onProgress: (p) => { calls.push({ ...p }); },
+    });
+    expect(trades).toHaveLength(5);
+    expect(calls.length).toBe(5);
+    expect(calls.map((c) => c.rowsProcessed)).toEqual([1, 2, 3, 4, 5]);
+    calls.forEach((c) => {
+      expect(c.totalBytes).toBe(file.size);
+      expect(c.bytesProcessed).toBeGreaterThanOrEqual(0);
+      expect(c.bytesProcessed).toBeLessThanOrEqual(file.size);
+    });
+  });
+
+  test('onProgress counts malformed rows alongside successful trades', async () => {
+    const csv = [
+      HEADER,
+      '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)',
+      '04/26/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$8.00,not-a-number',
+      '04/30/2026,04/30/2026,05/01/2026,QQQ,QQQ 5/3/2026 Put $400.00,STC,2,$1.50,$294.00',
+    ].join('\n');
+    const calls: number[] = [];
+    await parseCsv(makeFile(csv), {
+      onProgress: (p) => { calls.push(p.rowsProcessed); },
+    });
+    expect(calls).toEqual([1, 2, 3]);
+  });
+});

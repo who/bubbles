@@ -7,6 +7,16 @@ export type ParseCsvResult = {
   warnings: string[];
 };
 
+export type ParseProgress = {
+  rowsProcessed: number;
+  bytesProcessed: number;
+  totalBytes: number;
+};
+
+export type ParseCsvOptions = {
+  onProgress?: (progress: ParseProgress) => void;
+};
+
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
 const NON_CSV_MESSAGE = 'Only .csv files are supported.';
@@ -37,7 +47,7 @@ function rowToTrade(row: Record<string, string>): RawTrade {
   };
 }
 
-export function parseCsv(file: File): Promise<ParseCsvResult> {
+export function parseCsv(file: File, options?: ParseCsvOptions): Promise<ParseCsvResult> {
   return new Promise((resolve, reject) => {
     if (!file.name.toLowerCase().endsWith('.csv')) {
       reject(new ParseError(NON_CSV_MESSAGE, file.name));
@@ -83,6 +93,13 @@ export function parseCsv(file: File): Promise<ParseCsvResult> {
           trades.push(rowToTrade(results.data));
         } catch {
           malformedCount += 1;
+        }
+        if (options?.onProgress) {
+          options.onProgress({
+            rowsProcessed: trades.length + malformedCount,
+            bytesProcessed: results.meta.cursor ?? 0,
+            totalBytes: file.size,
+          });
         }
       },
       complete: () => {
