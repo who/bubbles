@@ -6,7 +6,13 @@ You are invoked in a bash loop. Each invocation = one task. The loop restarts yo
 
 ## Your Task
 
-1. **Orient**: Run `bd list --sort updated --all --limit 10 --json | jq -r '.[].id' | xargs bd show --json` to see what happened in previous loops.
+1. **Orient**: To see what happened in previous loops, perform these steps in order. Run each as a separate Bash call so its output appears as its own log entry — no sub-shells, no piped chains.
+
+   1a. Run `bd list --sort updated --all --limit 10 --json` — recent activity across all issue types (titles, descriptions, design, acceptance criteria; no comments).
+
+   1b. Run `bd list --sort updated --type bug --all --limit 3 --json` — the three most-recently-updated bugs (the "most worked on bugs" signal). Parse the `id` field from each entry in the returned JSON.
+
+   1c. If 1b returned at least one id, run `bd show <id1> <id2> <id3> --json` (positional args, space-separated, no shell substitution). This emits the full record for each bug **including comments**, which is what the CodeGraph block reuse step below scans. If 1b returned an empty array, skip 1c and proceed.
 
    **Activity read.** When `codegraph_available`, additionally surface recent CodeGraph activity for files touched in the last ~20 commits. Run `git log -20 --name-only | sort -u` to derive the file list, then enrich it:
 
