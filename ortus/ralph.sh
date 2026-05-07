@@ -161,6 +161,15 @@ export GOCACHE="$PWD/.cache/go-build"
 # default with BD_FLOCK_WAIT=<seconds>.
 export PATH="$PWD/ortus:$PATH"
 
+# bd retry helper (bubbles-m51.3) — defense-in-depth around the flock wrapper.
+# Source ortus/bd_retry.sh so any direct `bd` invocations in this script (or
+# scripts that source this) can use `bd_retry` to absorb the brief race when an
+# ephemeral dolt sql-server is shutting down while the next is starting. New
+# scripts should prefer `bd_retry` over plain `bd`. Override retry count with
+# BD_RETRY_MAX=<n> (default 5).
+# shellcheck source=bd_retry.sh
+. "$(dirname "$0")/bd_retry.sh"
+
 # Claude invocation routing (ortus-lfft.2) — when --docker is set,
 # route the inner claude session through `docker sandbox run claude --name
 # ortus-ralph --` so it runs inside Docker's bundled-image sandbox. No

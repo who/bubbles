@@ -14,6 +14,12 @@ set -euo pipefail
 # Resolve ortus directory for prompt file access (must be done before cd)
 ORTUS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# bd retry helper (bubbles-m51.3) — wrap bd invocations so dolt-lock contention
+# is absorbed instead of failing the script. Sourced from a sibling so the
+# helper stays a single source of truth across ortus/*.sh.
+# shellcheck source=bd_retry.sh
+. "$ORTUS_DIR/bd_retry.sh"
+
 # Handle PRD intake flow
 handle_prd() {
     local prd_path="${1:-}"
@@ -90,9 +96,9 @@ Idea: $idea")
 
     local feature_id
     if [[ -z "$description" ]]; then
-        feature_id=$(bd create --title="$idea" --type=feature --json | jq -r '.id')
+        feature_id=$(bd_retry create --title="$idea" --type=feature --json | jq -r '.id')
     else
-        feature_id=$(bd create --title="$idea" --type=feature --body="$description" --json | jq -r '.id')
+        feature_id=$(bd_retry create --title="$idea" --type=feature --body="$description" --json | jq -r '.id')
     fi
 
     echo ""

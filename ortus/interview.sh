@@ -26,6 +26,12 @@
 
 set -e
 
+# bd retry helper (bubbles-m51.3) — wrap bd invocations so dolt-lock contention
+# is absorbed instead of failing the script. Sourced from a sibling so the
+# helper stays a single source of truth across ortus/*.sh.
+# shellcheck source=bd_retry.sh
+. "$(dirname "$0")/bd_retry.sh"
+
 # Parse arguments
 FEATURE_ID=""
 while [[ $# -gt 0 ]]; do
@@ -78,7 +84,7 @@ echo_error() {
 find_pending_features() {
   # Get all features assigned to ralph
   local features_json
-  features_json=$(bd list --type feature --status open --json 2>/dev/null || echo "[]")
+  features_json=$(bd_retry list --type feature --status open --json 2>/dev/null || echo "[]")
 
   # Filter out features that already have 'interviewed' label
   echo "$features_json" | jq -c '[.[] | select(.labels | (. == null) or (index("interviewed") | not) and (index("prd:interviewing") | not) and (index("prd:ready") | not) and (index("approved") | not))]'
@@ -138,7 +144,7 @@ validate_feature() {
   local feature_id="$1"
 
   local feature_json
-  feature_json=$(bd show "$feature_id" --json 2>/dev/null) || {
+  feature_json=$(bd_retry show "$feature_id" --json 2>/dev/null) || {
     echo_error "Feature '$feature_id' not found"
     exit 1
   }
@@ -259,7 +265,7 @@ else
 
   FEATURE_ID=$(select_feature "$pending_json")
 
-  feature_json=$(bd show "$FEATURE_ID" --json 2>/dev/null)
+  feature_json=$(bd_retry show "$FEATURE_ID" --json 2>/dev/null)
   feature_title=$(echo "$feature_json" | jq -r '.[0].title')
   feature_description=$(echo "$feature_json" | jq -r '.[0].description // "No description provided"')
 fi
