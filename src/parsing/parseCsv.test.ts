@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest';
+import { ParseError } from './normalizers.ts';
 import { parseCsv } from './parseCsv.ts';
 
 const HEADER = 'Activity Date,Process Date,Settle Date,Instrument,Description,Trans Code,Quantity,Price,Amount';
+const SAMPLE_ROW = '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)';
 
 const FIXTURE_5_ROWS = [
   HEADER,
@@ -88,5 +90,134 @@ describe('parseCsv (PRD §6.1)', () => {
     expect(trades).toHaveLength(1);
     expect(warnings).toHaveLength(1);
     expect(trades[0]?.transCode).toBe('STC');
+  });
+});
+
+describe('parseCsv header normalization & validation (PRD §6.1, §9)', () => {
+  test('AC1 — lowercase headers map to canonical fields', async () => {
+    const csv = [
+      'activity date,process date,settle date,instrument,description,trans code,quantity,price,amount',
+      SAMPLE_ROW,
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(warnings).toEqual([]);
+    expect(trades).toHaveLength(1);
+    expect(trades[0]?.transCode).toBe('BTO');
+  });
+
+  test('AC1 — mixed-case headers map to canonical fields', async () => {
+    const csv = [
+      'Activity Date,Process Date,Settle Date,Instrument,Description,Trans Code,Quantity,Price,Amount',
+      SAMPLE_ROW,
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(warnings).toEqual([]);
+    expect(trades).toHaveLength(1);
+  });
+
+  test('AC1 — uppercase headers map to canonical fields', async () => {
+    const csv = [
+      'ACTIVITY DATE,PROCESS DATE,SETTLE DATE,INSTRUMENT,DESCRIPTION,TRANS CODE,QUANTITY,PRICE,AMOUNT',
+      SAMPLE_ROW,
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(warnings).toEqual([]);
+    expect(trades).toHaveLength(1);
+    expect(trades[0]?.instrument).toBe('SPY');
+  });
+
+  test('AC1 — headers with surrounding whitespace map to canonical fields', async () => {
+    const csv = [
+      ' Activity Date , Process Date ,Settle Date,Instrument,Description,Trans Code,Quantity,Price,Amount',
+      SAMPLE_ROW,
+    ].join('\n');
+    const { trades } = await parseCsv(makeFile(csv));
+    expect(trades).toHaveLength(1);
+    expect(trades[0]?.activityDate.toISOString()).toBe('2026-04-24T00:00:00.000Z');
+  });
+
+  test('AC2 — missing Trans Code throws PRD §9 message verbatim', async () => {
+    const csv = [
+      'Activity Date,Process Date,Settle Date,Instrument,Description,Quantity,Price,Amount',
+      '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,1,$5.00,($505.00)',
+    ].join('\n');
+    await expect(parseCsv(makeFile(csv))).rejects.toThrow(ParseError);
+    await expect(parseCsv(makeFile(csv))).rejects.toThrow(
+      "Couldn't find required column: Trans Code. Is this a Robinhood activity export?",
+    );
+  });
+
+  test.each([
+    {
+      missing: 'Activity Date',
+      headerLine: 'Process Date,Settle Date,Instrument,Description,Trans Code,Quantity,Price,Amount',
+      row: '04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)',
+    },
+    {
+      missing: 'Instrument',
+      headerLine: 'Activity Date,Process Date,Settle Date,Description,Trans Code,Quantity,Price,Amount',
+      row: '04/24/2026,04/24/2026,04/25/2026,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)',
+    },
+    {
+      missing: 'Description',
+      headerLine: 'Activity Date,Process Date,Settle Date,Instrument,Trans Code,Quantity,Price,Amount',
+      row: '04/24/2026,04/24/2026,04/25/2026,SPY,BTO,1,$5.00,($505.00)',
+    },
+    {
+      missing: 'Quantity',
+      headerLine: 'Activity Date,Process Date,Settle Date,Instrument,Description,Trans Code,Price,Amount',
+      row: '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,$5.00,($505.00)',
+    },
+    {
+      missing: 'Amount',
+      headerLine: 'Activity Date,Process Date,Settle Date,Instrument,Description,Trans Code,Quantity,Price',
+      row: '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00',
+    },
+  ])('AC2 — missing $missing throws with that column name in the message', async ({ missing, headerLine, row }) => {
+    const csv = [headerLine, row].join('\n');
+    await expect(parseCsv(makeFile(csv))).rejects.toThrow(
+      `Couldn't find required column: ${missing}. Is this a Robinhood activity export?`,
+    );
+  });
+
+  test('AC3 — missing optional Process Date does NOT throw', async () => {
+    const csv = [
+      'Activity Date,Settle Date,Instrument,Description,Trans Code,Quantity,Price,Amount',
+      '04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)',
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(warnings).toEqual([]);
+    expect(trades).toHaveLength(1);
+  });
+
+  test('AC3 — missing optional Settle Date does NOT throw', async () => {
+    const csv = [
+      'Activity Date,Process Date,Instrument,Description,Trans Code,Quantity,Price,Amount',
+      '04/24/2026,04/24/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)',
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(warnings).toEqual([]);
+    expect(trades).toHaveLength(1);
+  });
+
+  test('AC3 — missing optional Price does NOT throw', async () => {
+    const csv = [
+      'Activity Date,Process Date,Settle Date,Instrument,Description,Trans Code,Quantity,Amount',
+      '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,($505.00)',
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(warnings).toEqual([]);
+    expect(trades).toHaveLength(1);
+  });
+
+  test('AC3 — all three optional columns missing simultaneously does NOT throw', async () => {
+    const csv = [
+      'Activity Date,Instrument,Description,Trans Code,Quantity,Amount',
+      '04/24/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,($505.00)',
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(warnings).toEqual([]);
+    expect(trades).toHaveLength(1);
+    expect(trades[0]?.amount).toBe(-505);
   });
 });
