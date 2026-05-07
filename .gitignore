@@ -44,6 +44,9 @@ build/
 .output/
 *.tsbuildinfo
 
+# Test coverage
+coverage/
+
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db
