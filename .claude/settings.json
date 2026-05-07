@@ -53,6 +53,9 @@
     "autoAllowBashIfSandboxed": true,
     "enabled": true,
     "failIfUnavailable": true,
+    "filesystem": {
+      "allowRead": ["~/.ssh"]
+    },
     "network": {
       "allowLocalBinding": true,
       "allowManagedDomainsOnly": true,
