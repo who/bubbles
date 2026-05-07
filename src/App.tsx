@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FileDropzone, StatsStrip } from './components/index.ts';
+import { FileDropzone, StatsStrip, ViewToggle } from './components/index.ts';
+import type { ViewMode } from './components/index.ts';
+import { BubbleChart } from './components/chart/index.ts';
 import { parseCsv } from './parsing/index.ts';
-import { computeClosedContracts, computeSummary } from './pnl/index.ts';
-import type { Summary } from './pnl/index.ts';
+import {
+  computeClosedContracts,
+  computeClosedTickers,
+  computeSummary,
+} from './pnl/index.ts';
+import type { ClosedContract, ClosedTicker, Summary } from './pnl/index.ts';
 import './App.css';
 
 type Status = 'empty' | 'parsing' | 'results' | 'error';
@@ -16,6 +22,9 @@ const ROW_COUNT_FORMATTER = new Intl.NumberFormat('en-US');
 function App() {
   const [status, setStatus] = useState<Status>('empty');
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [contracts, setContracts] = useState<ClosedContract[]>([]);
+  const [tickers, setTickers] = useState<ClosedTicker[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>('contract');
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -39,6 +48,9 @@ function App() {
     setStatus('parsing');
     setError(null);
     setSummary(null);
+    setContracts([]);
+    setTickers([]);
+    setViewMode('contract');
     setWarnings([]);
     setFileName(file.name);
     setRowsParsed(0);
@@ -53,8 +65,11 @@ function App() {
           setTotalBytes(tb);
         },
       });
-      const contracts = computeClosedContracts(trades);
-      const computed = computeSummary(contracts, parseWarnings);
+      const closedContracts = computeClosedContracts(trades);
+      const closedTickers = computeClosedTickers(closedContracts);
+      const computed = computeSummary(closedContracts, parseWarnings);
+      setContracts(closedContracts);
+      setTickers(closedTickers);
       setSummary(computed);
       setWarnings(parseWarnings);
       setStatus('results');
@@ -62,6 +77,8 @@ function App() {
       const message = e instanceof Error ? e.message : 'Failed to parse CSV.';
       setError(message);
       setSummary(null);
+      setContracts([]);
+      setTickers([]);
       setWarnings([]);
       setStatus('error');
     }
@@ -92,6 +109,9 @@ function App() {
   const handleReset = useCallback(() => {
     setStatus('empty');
     setSummary(null);
+    setContracts([]);
+    setTickers([]);
+    setViewMode('contract');
     setWarnings([]);
     setError(null);
     setFileName(null);
@@ -158,7 +178,18 @@ function App() {
                 .
               </p>
             </header>
-            <div className="app__chart-slot" aria-hidden="true" />
+            <ViewToggle
+              value={viewMode}
+              onChange={setViewMode}
+              counts={{ contract: contracts.length, ticker: tickers.length }}
+            />
+            <div className="app__chart-slot">
+              {viewMode === 'contract' ? (
+                <BubbleChart data={contracts} groupingMode="contract" />
+              ) : (
+                <BubbleChart data={tickers} groupingMode="ticker" />
+              )}
+            </div>
           </section>
           {warnings.length > 0 ? (
             <ul className="app__warnings" role="status">

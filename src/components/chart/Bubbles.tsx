@@ -16,14 +16,32 @@ export interface BubblesProps {
   xScale: ScaleTime<number, number>;
   yScale: ScaleLinear<number, number>;
   rScale: ScalePower<number, number>;
+  onHoverChange?: (id: string | null) => void;
 }
 
 const sortByPlMagnitudeDesc = (data: readonly BubbleDatum[]): BubbleDatum[] => [...data]
   .sort((a, b) => Math.abs(b.pl) - Math.abs(a.pl));
 
-function Bubbles({ data, xScale, yScale, rScale }: BubblesProps) {
+const noopHoverChange = (): void => {};
+
+function Bubbles({
+  data,
+  xScale,
+  yScale,
+  rScale,
+  onHoverChange = noopHoverChange,
+}: BubblesProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const sorted = sortByPlMagnitudeDesc(data);
+
+  const handleEnter = (id: string) => {
+    setHoveredId(id);
+    onHoverChange(id);
+  };
+  const handleLeave = () => {
+    setHoveredId(null);
+    onHoverChange(null);
+  };
 
   return (
     <g className="bubble-chart__bubbles">
@@ -42,13 +60,17 @@ function Bubbles({ data, xScale, yScale, rScale }: BubblesProps) {
             stroke={stroke}
             fill={fill}
             strokeWidth={isHovered ? STROKE_HOVER : STROKE_DEFAULT}
-            onMouseEnter={() => setHoveredId(d.id)}
-            onMouseLeave={() => setHoveredId(null)}
+            onMouseEnter={() => handleEnter(d.id)}
+            onMouseLeave={handleLeave}
           />
         );
       })}
     </g>
   );
 }
+
+Bubbles.defaultProps = {
+  onHoverChange: noopHoverChange,
+};
 
 export default Bubbles;

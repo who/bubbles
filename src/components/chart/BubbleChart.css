@@ -1,0 +1,9 @@
+.bubble-chart {
+  position: relative;
+  margin: 0 auto;
+}
+
+.bubble-chart__svg {
+  display: block;
+  background-color: #ffffff;
+}

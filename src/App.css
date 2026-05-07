@@ -92,6 +92,7 @@
 }
 
 .app__chart-slot {
+  margin-top: 1rem;
   min-height: 380px;
 }
 
