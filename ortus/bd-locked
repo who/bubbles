@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Serialize bd invocations per project to avoid concurrent dolt sql-server
+# launches contending for .beads/dolt/.dolt/noms/LOCK. Implements bubbles-m51.1.
+set -euo pipefail
+
+# Canonical path of this wrapper (resolves the `bd -> bd-locked` symlink too).
+self="$(readlink -f "${BASH_SOURCE[0]}")"
+self_dir="$(dirname "$self")"
+
+# Strip our own dir from PATH so `bd` below resolves to the real bd binary,
+# not back to this wrapper (the `ortus/bd` symlink is on PATH inside Ralph).
+PATH="$(printf '%s' "$PATH" | awk -v RS=: -v ORS=: -v skip="$self_dir" '$0!=skip' | sed 's/:$//')"
+export PATH
+
+# Find project root (nearest ancestor with a .beads dir).
+root="$PWD"
+while [ "$root" != "/" ] && [ ! -d "$root/.beads" ]; do
+  root="$(dirname "$root")"
+done
+
+lock="${root}/.beads/dolt.flock"
+mkdir -p "$(dirname "$lock")"
+exec flock -w "${BD_FLOCK_WAIT:-60}" "$lock" bd "$@"

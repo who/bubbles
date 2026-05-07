@@ -21,6 +21,9 @@ push-state.json
 # Lock files (various runtime locks)
 *.lock
 
+# Project-local flock for bd serialization (created by ortus/bd-locked, bubbles-m51.1)
+dolt.flock
+
 # Credential key (encryption key for federation peer auth — never commit)
 .beads-credential-key
 

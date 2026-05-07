@@ -153,6 +153,14 @@ export CARGO_HOME="$PWD/.cache/cargo"
 export GOMODCACHE="$PWD/.cache/go-mod"
 export GOCACHE="$PWD/.cache/go-build"
 
+# bd serialization (bubbles-m51.1) — prepend ortus/ to PATH so `bd` resolves
+# to the bd-locked flock wrapper for this Ralph tree (and any child Claude
+# sessions it spawns). The wrapper serializes bd invocations against a
+# project-local lockfile, defeating concurrent dolt sql-server launches that
+# otherwise contend for .beads/dolt/.dolt/noms/LOCK. Override the 60s wait
+# default with BD_FLOCK_WAIT=<seconds>.
+export PATH="$PWD/ortus:$PATH"
+
 # Claude invocation routing (ortus-lfft.2) — when --docker is set,
 # route the inner claude session through `docker sandbox run claude --name
 # ortus-ralph --` so it runs inside Docker's bundled-image sandbox. No
