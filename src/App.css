@@ -54,15 +54,42 @@
 
 .app__warnings {
   margin: 1rem 0 0;
-  padding: 0.75rem 1rem;
-  list-style: none;
   background-color: #fff7e6;
   color: #92400e;
   border: 1px solid #fde68a;
   border-radius: 6px;
 }
 
-.app__warnings li + li {
+.app__warnings__chip {
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.app__warnings__chip::-webkit-details-marker {
+  display: none;
+}
+
+.app__warnings__chip::before {
+  content: '▸ ';
+  display: inline-block;
+  margin-right: 0.25rem;
+  transition: transform 120ms ease-out;
+}
+
+.app__warnings[open] .app__warnings__chip::before {
+  transform: rotate(90deg);
+}
+
+.app__warnings__list {
+  margin: 0;
+  padding: 0.25rem 0.875rem 0.75rem 1.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.app__warnings__list li + li {
   margin-top: 0.25rem;
 }
 

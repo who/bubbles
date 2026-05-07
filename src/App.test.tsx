@@ -74,7 +74,7 @@ test('results state renders chart card with title, methodology footnote, and Upl
   expect(chartCard).toHaveTextContent('Chart based on 1 record.');
 
   expect(
-    screen.getByText(/Realized P\/L is computed from matched BTO\/STC pairs/i),
+    screen.getByText(/P\/L computed via matched closes:/i),
   ).toBeInTheDocument();
 
   expect(
@@ -207,6 +207,65 @@ test('bubbles-xad.5: ViewToggle flips BubbleChart between contract and ticker da
   chart = container.querySelector('.bubble-chart') as HTMLElement;
   expect(chart.dataset.groupingMode).toBe('contract');
   expect(chart.querySelectorAll('circle[data-bubble-id^="contract|"]')).toHaveLength(2);
+});
+
+test('bubbles-cxs.6: 1 malformed row renders chip "1 row was skipped." with expandable details', async () => {
+  // VALID_CSV plus one row with an invalid date → parseCsv produces ["1 row skipped: malformed"]
+  const ONE_MALFORMED_CSV = [
+    HEADER,
+    '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($100.00)',
+    '04/26/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$8.00,$200.00',
+    '99/99/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$1.00,$1.00',
+  ].join('\n');
+
+  const { container } = render(<App />);
+  const file = new File([ONE_MALFORMED_CSV], 'trades.csv', { type: 'text/csv' });
+  fireEvent.change(getHiddenInput(), { target: { files: [file] } });
+
+  await screen.findByRole('region', { name: /total realized p\/l/i });
+
+  const details = container.querySelector('details.app__warnings') as HTMLDetailsElement;
+  expect(details).not.toBeNull();
+  const summary = details.querySelector('summary') as HTMLElement;
+  expect(summary.textContent).toBe('1 row was skipped.');
+
+  // Underlying warning text is in the DOM (children of details render even when collapsed)
+  expect(details.textContent).toContain('1 row skipped: malformed');
+
+  // Clicking opens the details element
+  expect(details.open).toBe(false);
+  fireEvent.click(summary);
+  expect(details.open).toBe(true);
+});
+
+test('bubbles-cxs.6: pluralized chip "N rows were skipped." for >1 malformed', async () => {
+  const THREE_MALFORMED_CSV = [
+    HEADER,
+    '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($100.00)',
+    '04/26/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$8.00,$200.00',
+    '99/99/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$1.00,$1.00',
+    '88/88/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$1.00,$1.00',
+    '77/77/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$1.00,$1.00',
+  ].join('\n');
+
+  const { container } = render(<App />);
+  const file = new File([THREE_MALFORMED_CSV], 'trades.csv', { type: 'text/csv' });
+  fireEvent.change(getHiddenInput(), { target: { files: [file] } });
+
+  await screen.findByRole('region', { name: /total realized p\/l/i });
+
+  const summary = container.querySelector('details.app__warnings summary') as HTMLElement;
+  expect(summary).not.toBeNull();
+  expect(summary.textContent).toBe('3 rows were skipped.');
+});
+
+test('bubbles-cxs.6: no chip rendered when there are no warnings', async () => {
+  const { container } = render(<App />);
+  const file = new File([VALID_CSV], 'trades.csv', { type: 'text/csv' });
+  fireEvent.change(getHiddenInput(), { target: { files: [file] } });
+
+  await screen.findByRole('region', { name: /total realized p\/l/i });
+  expect(container.querySelector('details.app__warnings')).toBeNull();
 });
 
 test('clicking Upload another returns to empty state and clears parsed data', async () => {

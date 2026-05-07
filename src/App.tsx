@@ -13,11 +13,20 @@ import './App.css';
 
 type Status = 'empty' | 'parsing' | 'results' | 'error';
 
-const METHODOLOGY_TEXT = 'Realized P/L is computed from matched BTO/STC pairs per contract using proportional cost allocation. Open positions and BTC/STO/OEXP/CDIV transactions are excluded.';
+const METHODOLOGY_TEXT = 'P/L computed via matched closes: for each contract, min(BTO qty, STC qty) is closed at proportional cost basis. Open or sold-only positions are excluded.';
 
 const PROGRESS_BAR_DELAY_MS = 2000;
 
 const ROW_COUNT_FORMATTER = new Intl.NumberFormat('en-US');
+
+const SKIPPED_ROW_RE = /^(\d+)\s+rows?\s+skipped/i;
+
+function totalSkippedRows(warnings: readonly string[]): number {
+  return warnings.reduce((sum, w) => {
+    const m = SKIPPED_ROW_RE.exec(w);
+    return sum + (m ? Number(m[1]) : 0);
+  }, 0);
+}
 
 function App() {
   const [status, setStatus] = useState<Status>('empty');
@@ -192,11 +201,20 @@ function App() {
             </div>
           </section>
           {warnings.length > 0 ? (
-            <ul className="app__warnings" role="status">
-              {warnings.map((w) => (
-                <li key={w}>{w}</li>
-              ))}
-            </ul>
+            <details className="app__warnings">
+              <summary className="app__warnings__chip">
+                {(() => {
+                  const skipped = totalSkippedRows(warnings) || warnings.length;
+                  const noun = skipped === 1 ? 'row was' : 'rows were';
+                  return `${skipped} ${noun} skipped.`;
+                })()}
+              </summary>
+              <ul className="app__warnings__list">
+                {warnings.map((w) => (
+                  <li key={w}>{w}</li>
+                ))}
+              </ul>
+            </details>
           ) : null}
           <p className="app__methodology">{METHODOLOGY_TEXT}</p>
           <button
