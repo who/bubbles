@@ -7,6 +7,12 @@ export type ParseCsvResult = {
   warnings: string[];
 };
 
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
+
+const NON_CSV_MESSAGE = 'Only .csv files are supported.';
+const EMPTY_FILE_MESSAGE = 'This file is empty.';
+const FILE_TOO_LARGE_MESSAGE = 'File is unusually large for an activity export. Max 50MB.';
+
 const REQUIRED_COLUMNS: ReadonlyArray<{ canonical: string; normalized: string }> = [
   { canonical: 'Activity Date', normalized: 'activity date' },
   { canonical: 'Instrument', normalized: 'instrument' },
@@ -33,6 +39,19 @@ function rowToTrade(row: Record<string, string>): RawTrade {
 
 export function parseCsv(file: File): Promise<ParseCsvResult> {
   return new Promise((resolve, reject) => {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      reject(new ParseError(NON_CSV_MESSAGE, file.name));
+      return;
+    }
+    if (file.size === 0) {
+      reject(new ParseError(EMPTY_FILE_MESSAGE, file.name));
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      reject(new ParseError(FILE_TOO_LARGE_MESSAGE, file.name));
+      return;
+    }
+
     const trades: RawTrade[] = [];
     const warnings: string[] = [];
     let aborted = false;

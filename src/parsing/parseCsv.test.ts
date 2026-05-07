@@ -280,3 +280,50 @@ describe('parseCsv header normalization & validation (PRD §6.1, §9)', () => {
     expect(trades[0]?.amount).toBe(-505);
   });
 });
+
+describe('parseCsv file-level validation (PRD §9)', () => {
+  test('AC1 — non-.csv file rejected with verbatim message', async () => {
+    const file = new File(['anything'], 'report.txt', { type: 'text/plain' });
+    await expect(parseCsv(file)).rejects.toThrow(ParseError);
+    await expect(parseCsv(file)).rejects.toThrow('Only .csv files are supported.');
+  });
+
+  test('AC1 — extension check is case-insensitive (.CSV passes)', async () => {
+    const csv = [HEADER, SAMPLE_ROW].join('\n');
+    const file = new File([csv], 'EXPORT.CSV', { type: 'text/csv' });
+    const { trades } = await parseCsv(file);
+    expect(trades).toHaveLength(1);
+  });
+
+  test('AC2 — empty (0-byte) file rejected with verbatim message', async () => {
+    const file = new File([], 'empty.csv', { type: 'text/csv' });
+    await expect(parseCsv(file)).rejects.toThrow(ParseError);
+    await expect(parseCsv(file)).rejects.toThrow('This file is empty.');
+  });
+
+  test('AC3 — file >50MB rejected with verbatim message', async () => {
+    const oversized = new File(['x'], 'huge.csv', { type: 'text/csv' });
+    Object.defineProperty(oversized, 'size', { value: 50 * 1024 * 1024 + 1 });
+    await expect(parseCsv(oversized)).rejects.toThrow(ParseError);
+    await expect(parseCsv(oversized)).rejects.toThrow(
+      'File is unusually large for an activity export. Max 50MB.',
+    );
+  });
+
+  test('AC3 — file at exactly 50MB threshold is NOT rejected by size guard', async () => {
+    const csv = [HEADER, SAMPLE_ROW].join('\n');
+    const file = new File([csv], 'edge.csv', { type: 'text/csv' });
+    Object.defineProperty(file, 'size', { value: 50 * 1024 * 1024 });
+    const { trades } = await parseCsv(file);
+    expect(trades).toHaveLength(1);
+  });
+
+  test('AC4 — a 100-byte valid CSV passes through to parsing', async () => {
+    const csv = [HEADER, SAMPLE_ROW].join('\n');
+    expect(csv.length).toBeGreaterThanOrEqual(100);
+    const file = makeFile(csv);
+    const { trades, warnings } = await parseCsv(file);
+    expect(trades).toHaveLength(1);
+    expect(warnings).toEqual([]);
+  });
+});
