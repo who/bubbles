@@ -93,6 +93,65 @@ describe('parseCsv (PRD §6.1)', () => {
   });
 });
 
+describe('parseCsv malformed-row aggregation (PRD §6.1 edge case 3)', () => {
+  test('AC1 — 1 malformed row yields warnings === ["1 row skipped: malformed"]', async () => {
+    const csv = [
+      HEADER,
+      '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)',
+      '04/26/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$8.00,not-a-number',
+      '04/30/2026,04/30/2026,05/01/2026,QQQ,QQQ 5/3/2026 Put $400.00,STC,2,$1.50,$294.00',
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(trades).toHaveLength(2);
+    expect(warnings).toEqual(['1 row skipped: malformed']);
+  });
+
+  test('AC2 — 3 malformed rows aggregate to "3 rows skipped: malformed"', async () => {
+    const csv = [
+      HEADER,
+      '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)',
+      '04/26/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$8.00,not-a-number',
+      '04/24/2026,04/24/2026,04/25/2026,QQQ,QQQ 5/3/2026 Put $400.00,BTO,oops,$3.00,($606.00)',
+      'not-a-date,04/30/2026,05/01/2026,QQQ,QQQ 5/3/2026 Put $400.00,STC,2,$1.50,$294.00',
+      '05/03/2026,05/03/2026,05/04/2026,AAPL,AAPL 5/10/2026 Call $200.00,OEXP,1,$0.00,$0.00',
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(trades).toHaveLength(2);
+    expect(warnings).toEqual(['3 rows skipped: malformed']);
+  });
+
+  test('AC3 — empty trailing rows are silently dropped (NOT counted)', async () => {
+    const csv = [
+      HEADER,
+      '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)',
+      '04/26/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$8.00,$795.00',
+      '',
+      '',
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(trades).toHaveLength(2);
+    expect(warnings).toEqual([]);
+  });
+
+  test('AC3 — empty trailing rows alongside malformed rows: only malformed counted', async () => {
+    const csv = [
+      HEADER,
+      '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)',
+      '04/26/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$8.00,not-a-number',
+      '',
+      '',
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(trades).toHaveLength(1);
+    expect(warnings).toEqual(['1 row skipped: malformed']);
+  });
+
+  test('zero malformed rows produces empty warnings array', async () => {
+    const { warnings } = await parseCsv(makeFile(FIXTURE_5_ROWS));
+    expect(warnings).toEqual([]);
+  });
+});
+
 describe('parseCsv header normalization & validation (PRD §6.1, §9)', () => {
   test('AC1 — lowercase headers map to canonical fields', async () => {
     const csv = [

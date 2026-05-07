@@ -37,6 +37,7 @@ export function parseCsv(file: File): Promise<ParseCsvResult> {
     const warnings: string[] = [];
     let aborted = false;
     let headersValidated = false;
+    let malformedCount = 0;
 
     Papa.parse<Record<string, string>>(file, {
       header: true,
@@ -61,14 +62,17 @@ export function parseCsv(file: File): Promise<ParseCsvResult> {
         }
         try {
           trades.push(rowToTrade(results.data));
-        } catch (err) {
-          warnings.push(err instanceof Error ? err.message : String(err));
+        } catch {
+          malformedCount += 1;
         }
       },
       complete: () => {
-        if (!aborted) {
-          resolve({ trades, warnings });
+        if (aborted) return;
+        if (malformedCount > 0) {
+          const noun = malformedCount === 1 ? 'row' : 'rows';
+          warnings.push(`${malformedCount} ${noun} skipped: malformed`);
         }
+        resolve({ trades, warnings });
       },
       error: (err) => {
         if (!aborted) reject(err);
