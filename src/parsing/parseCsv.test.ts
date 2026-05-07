@@ -328,6 +328,64 @@ describe('parseCsv file-level validation (PRD §9)', () => {
   });
 });
 
+describe('parseCsv non-trade row filtering (bubbles-a7j)', () => {
+  test('CDIV/OEXP/ACH/MINT/GOLD/DTAX rows with empty Quantity or Amount are skipped silently', async () => {
+    const csv = [
+      HEADER,
+      // Two valid trade fills sandwiching the non-trade rows
+      '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)',
+      // CDIV: empty Quantity, populated Amount
+      '04/30/2026,04/30/2026,04/30/2026,JPM,Cash Div: R/D 2026-04-06 P/D 2026-04-30,CDIV,,,$1.02',
+      // OEXP: populated Quantity (with trailing S), empty Amount
+      '04/29/2026,04/29/2026,04/30/2026,TSLA,Option Expiration for TSLA Call $420.00,OEXP,210S,,',
+      // ACH deposit: empty Quantity, populated Amount
+      '04/22/2026,04/22/2026,04/23/2026,,ACH Deposit,ACH,,,"$5,000.00"',
+      // MINT margin rate: empty Quantity, populated Amount (parens)
+      '04/23/2026,04/23/2026,04/23/2026,,Aggregated Margin Rate,MINT,,,($1.61)',
+      // GOLD subscription: empty Quantity, populated Amount (parens)
+      '04/23/2026,04/23/2026,04/23/2026,,Gold Subscription Fee,GOLD,,,($5.00)',
+      // DTAX foreign withholding: empty Quantity, populated Amount (parens)
+      '04/09/2026,04/09/2026,04/09/2026,TSM,Foreign Tax Witholding at $0.33,DTAX,,,($0.33)',
+      '04/26/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$8.00,$795.00',
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(trades).toHaveLength(2);
+    expect(trades.map((t) => t.transCode)).toEqual(['BTO', 'STC']);
+    expect(warnings).toEqual([]);
+  });
+
+  test('quoted-comma fields in Description and Amount round-trip into RawTrade', async () => {
+    // Real Robinhood rows where Description and Amount contain quoted commas
+    // (e.g., '$1,190.00' inside Description, '($1,310.12)' as Amount). PapaParse
+    // handles RFC 4180 escaping; this test guards against any regression in that path.
+    const csv = [
+      HEADER,
+      '"4/30/2026","4/30/2026","5/1/2026","AAPL","AAPL 5/4/2026 Call $1,190.00","BTO","1","$1.19","($1,190.04)"',
+      '"5/1/2026","5/1/2026","5/2/2026","AAPL","AAPL 5/4/2026 Call $1,190.00","STC","1","$1.50","$1,310.12"',
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(warnings).toEqual([]);
+    expect(trades).toHaveLength(2);
+    expect(trades[0]?.description).toBe('AAPL 5/4/2026 Call $1,190.00');
+    expect(trades[0]?.amount).toBe(-1190.04);
+    expect(trades[1]?.amount).toBe(1310.12);
+  });
+
+  test('onProgress.rowsProcessed counts non-trade rows alongside trades', async () => {
+    const csv = [
+      HEADER,
+      '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)',
+      '04/30/2026,04/30/2026,04/30/2026,JPM,Cash Div,CDIV,,,$1.02',
+      '04/26/2026,04/26/2026,04/27/2026,SPY,SPY 4/26/2026 Call $500.00,STC,1,$8.00,$795.00',
+    ].join('\n');
+    const calls: number[] = [];
+    await parseCsv(makeFile(csv), {
+      onProgress: (p) => { calls.push(p.rowsProcessed); },
+    });
+    expect(calls).toEqual([1, 2, 3]);
+  });
+});
+
 describe('parseCsv onProgress callback', () => {
   test('fires onProgress for each parsed row with rowsProcessed + bytes + totalBytes', async () => {
     const file = makeFile(FIXTURE_5_ROWS);

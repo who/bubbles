@@ -36,14 +36,19 @@ function normalizeHeader(h: string): string {
   return h.trim().toLowerCase();
 }
 
-function rowToTrade(row: Record<string, string>): RawTrade {
+function rowToTrade(row: Record<string, string>): RawTrade | null {
+  const quantityRaw = (row.quantity ?? '').trim();
+  const amountRaw = (row.amount ?? '').trim();
+  if (quantityRaw === '' || amountRaw === '') {
+    return null;
+  }
   return {
     activityDate: parseDate(row['activity date'] ?? ''),
     instrument: (row.instrument ?? '').trim(),
     description: (row.description ?? '').trim(),
     transCode: (row['trans code'] ?? '').trim(),
-    quantity: parseQty(row.quantity ?? ''),
-    amount: parseAmount(row.amount ?? ''),
+    quantity: parseQty(quantityRaw),
+    amount: parseAmount(amountRaw),
   };
 }
 
@@ -67,6 +72,7 @@ export function parseCsv(file: File, options?: ParseCsvOptions): Promise<ParseCs
     let aborted = false;
     let headersValidated = false;
     let malformedCount = 0;
+    let nonTradeCount = 0;
 
     Papa.parse<Record<string, string>>(file, {
       header: true,
@@ -90,13 +96,18 @@ export function parseCsv(file: File, options?: ParseCsvOptions): Promise<ParseCs
           }
         }
         try {
-          trades.push(rowToTrade(results.data));
+          const trade = rowToTrade(results.data);
+          if (trade === null) {
+            nonTradeCount += 1;
+          } else {
+            trades.push(trade);
+          }
         } catch {
           malformedCount += 1;
         }
         if (options?.onProgress) {
           options.onProgress({
-            rowsProcessed: trades.length + malformedCount,
+            rowsProcessed: trades.length + malformedCount + nonTradeCount,
             bytesProcessed: results.meta.cursor ?? 0,
             totalBytes: file.size,
           });
