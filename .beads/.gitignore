@@ -24,6 +24,9 @@ push-state.json
 # Project-local flock for bd serialization (created by ortus/bd-locked, bubbles-m51.1)
 dolt.flock
 
+# Single-instance ralph.sh guard (created by ortus/ralph.sh, bubbles-m51.2)
+ralph.flock
+
 # Credential key (encryption key for federation peer auth — never commit)
 .beads-credential-key
 
@@ -49,6 +52,7 @@ ephemeral.sqlite3-shm
 # Dolt server management (auto-started by bd)
 dolt-server.pid
 dolt-server.log
+dolt-server.log.*
 dolt-server.lock
 dolt-server.port
 dolt-server.activity
