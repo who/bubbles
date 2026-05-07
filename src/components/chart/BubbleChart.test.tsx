@@ -242,3 +242,48 @@ describe('BubbleChart (bubbles-xad.5 grouping views)', () => {
     expect(getTooltip(container)).toHaveTextContent('3 trade fills');
   });
 });
+
+describe('BubbleChart empty result state (bubbles-xad.6)', () => {
+  test('AC1: contract mode with empty data shows §7.3 friendly message centered in chart card', () => {
+    const { container } = render(
+      <BubbleChart data={[]} groupingMode="contract" />,
+    );
+
+    const wrapper = container.querySelector('.bubble-chart');
+    expect(wrapper).not.toBeNull();
+    expect(wrapper).toHaveClass('bubble-chart--empty');
+    expect((wrapper as HTMLElement).dataset.bubbleCount).toBe('0');
+    expect((wrapper as HTMLElement).dataset.groupingMode).toBe('contract');
+
+    const message = container.querySelector('.bubble-chart__empty-message');
+    expect(message).not.toBeNull();
+    expect(message).toHaveTextContent(
+      'This file has no matched closes. All positions appear to still be open.',
+    );
+  });
+
+  test('AC1: ticker mode with empty data shows the same §7.3 friendly message', () => {
+    const { container } = render(
+      <BubbleChart data={[]} groupingMode="ticker" />,
+    );
+
+    const message = container.querySelector('.bubble-chart__empty-message');
+    expect(message).not.toBeNull();
+    expect(message).toHaveTextContent(
+      'This file has no matched closes. All positions appear to still be open.',
+    );
+    expect(
+      (container.querySelector('.bubble-chart') as HTMLElement).dataset.groupingMode,
+    ).toBe('ticker');
+  });
+
+  test('AC2: empty state does not render axes or any svg', () => {
+    const { container } = render(
+      <BubbleChart data={[]} groupingMode="contract" />,
+    );
+
+    expect(container.querySelector('svg')).toBeNull();
+    expect(container.querySelector('.bubble-chart__x-axis')).toBeNull();
+    expect(container.querySelector('.bubble-chart__y-axis')).toBeNull();
+  });
+});

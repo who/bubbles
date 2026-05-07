@@ -93,14 +93,32 @@ const findHovered = (
   };
 };
 
+export const EMPTY_RESULT_MESSAGE = 'This file has no matched closes. All positions appear to still be open.';
+
 function BubbleChart(props: BubbleChartProps) {
   const { groupingMode } = props;
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const bubbleData = useMemo(() => toBubbleData(props), [props]);
-  const xScale = useMemo(() => buildXScale(bubbleData, PLOT_WIDTH), [bubbleData]);
-  const yScale = useMemo(() => buildYScale(bubbleData, PLOT_HEIGHT), [bubbleData]);
-  const rScale = useMemo(() => buildRScale(bubbleData), [bubbleData]);
+
+  if (bubbleData.length === 0) {
+    return (
+      <div
+        className="bubble-chart bubble-chart--empty"
+        data-grouping-mode={groupingMode}
+        data-bubble-count={0}
+        style={{ width: `${CHART_WIDTH}px`, height: `${CHART_HEIGHT}px` }}
+      >
+        <p className="bubble-chart__empty-message" role="status">
+          {EMPTY_RESULT_MESSAGE}
+        </p>
+      </div>
+    );
+  }
+
+  const xScale = buildXScale(bubbleData, PLOT_WIDTH);
+  const yScale = buildYScale(bubbleData, PLOT_HEIGHT);
+  const rScale = buildRScale(bubbleData);
 
   const hovered = findHovered(props, hoveredId);
   const anchorX = hovered ? CHART_MARGIN.left + xScale(hovered.closeDate) : 0;
