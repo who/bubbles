@@ -36,3 +36,5 @@
 
 # Git branch for beads commits (bd dolt push will commit to this branch)
 # sync-branch: "beads-sync"
+
+dolt.auto-start: true
