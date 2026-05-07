@@ -1,0 +1,188 @@
+import { render } from '@testing-library/react';
+import { describe, expect, test } from 'vitest';
+import HoverTooltip, {
+  EDGE_THRESHOLD,
+  TOOLTIP_OFFSET_X,
+  TOOLTIP_OFFSET_Y,
+  TOOLTIP_WIDTH,
+  type ContractTooltipDatum,
+  type TickerTooltipDatum,
+  type TooltipDatum,
+} from './HoverTooltip.tsx';
+
+const contractGain: ContractTooltipDatum = {
+  view: 'contract',
+  name: 'AAPL 5/8/2026 Call $190.00',
+  closeDate: new Date(2026, 4, 8),
+  pl: 374.20,
+  pctReturn: 21.69,
+  costBasis: 1725.20,
+  closedQty: 5,
+  tradeCount: 2,
+};
+
+const contractLoss: ContractTooltipDatum = {
+  view: 'contract',
+  name: 'TSLA 4/30/2026 Put $250.00',
+  closeDate: new Date(2026, 3, 30),
+  pl: -800.50,
+  pctReturn: -45.3,
+  costBasis: 1766.00,
+  closedQty: 3,
+  tradeCount: 1,
+};
+
+const tickerGain: TickerTooltipDatum = {
+  view: 'ticker',
+  name: 'PLTR',
+  closeDate: new Date(2026, 4, 4),
+  pl: 1245.50,
+  pctReturn: 29.29,
+  costBasis: 4252.00,
+  closedQty: 50,
+  contracts: 4,
+};
+
+const renderTooltip = (props: {
+  datum: TooltipDatum | null;
+  anchorX?: number;
+  anchorY?: number;
+  containerWidth?: number;
+}) => render(
+  <HoverTooltip
+    datum={props.datum}
+    anchorX={props.anchorX ?? 400}
+    anchorY={props.anchorY ?? 300}
+    containerWidth={props.containerWidth ?? 800}
+  />,
+);
+
+const getTooltip = (container: HTMLElement): HTMLElement => {
+  const el = container.querySelector('.hover-tooltip');
+  if (!(el instanceof HTMLElement)) throw new Error('tooltip not found');
+  return el;
+};
+
+describe('HoverTooltip (PRD §7.2 + §7.3)', () => {
+  test('AC1: tooltip is positioned above the bubble (translate-Y -100%)', () => {
+    const { container } = renderTooltip({
+      datum: contractGain,
+      anchorX: 400,
+      anchorY: 300,
+      containerWidth: 800,
+    });
+    const tip = getTooltip(container);
+    expect(tip.style.left).toBe(`${400 + TOOLTIP_OFFSET_X}px`);
+    expect(tip.style.top).toBe(`${300 - TOOLTIP_OFFSET_Y}px`);
+  });
+
+  test('AC2: gain bubble uses gain top-border color', () => {
+    const { container } = renderTooltip({ datum: contractGain });
+    const tip = getTooltip(container);
+    expect(tip.style.borderTopColor).toBe('rgb(46, 125, 50)');
+  });
+
+  test('AC2: loss bubble uses loss top-border color', () => {
+    const { container } = renderTooltip({ datum: contractLoss });
+    const tip = getTooltip(container);
+    expect(tip.style.borderTopColor).toBe('rgb(198, 40, 40)');
+  });
+
+  test('AC2: pl === 0 is treated as a gain (border green)', () => {
+    const zero: ContractTooltipDatum = { ...contractGain, pl: 0 };
+    const { container } = renderTooltip({ datum: zero });
+    const tip = getTooltip(container);
+    expect(tip.style.borderTopColor).toBe('rgb(46, 125, 50)');
+  });
+
+  test('AC3: contract view renders all required fields plus trade fill count', () => {
+    const { container } = renderTooltip({ datum: contractGain });
+    const tip = getTooltip(container);
+    expect(tip).toHaveTextContent('AAPL 5/8/2026 Call $190.00');
+    expect(tip).toHaveTextContent('May 8, 2026');
+    expect(tip).toHaveTextContent('+$374.20');
+    expect(tip).toHaveTextContent('+21.7%');
+    expect(tip).toHaveTextContent('$1,725.20');
+    expect(tip).toHaveTextContent('5');
+    expect(tip).toHaveTextContent('2 trade fills');
+  });
+
+  test('AC3: contract view singular-grams "1 trade fill" when tradeCount===1', () => {
+    const single: ContractTooltipDatum = { ...contractGain, tradeCount: 1 };
+    const { container } = renderTooltip({ datum: single });
+    expect(getTooltip(container)).toHaveTextContent('1 trade fill');
+  });
+
+  test('AC3: ticker view renders all required fields plus contract count', () => {
+    const { container } = renderTooltip({ datum: tickerGain });
+    const tip = getTooltip(container);
+    expect(tip).toHaveTextContent('PLTR');
+    expect(tip).toHaveTextContent('May 4, 2026');
+    expect(tip).toHaveTextContent('+$1,245.50');
+    expect(tip).toHaveTextContent('+29.3%');
+    expect(tip).toHaveTextContent('$4,252.00');
+    expect(tip).toHaveTextContent('50');
+    expect(tip).toHaveTextContent('4 contracts');
+  });
+
+  test('AC3: ticker view singular-grams "1 contract" when contracts===1', () => {
+    const single: TickerTooltipDatum = { ...tickerGain, contracts: 1 };
+    const { container } = renderTooltip({ datum: single });
+    expect(getTooltip(container)).toHaveTextContent('1 contract');
+  });
+
+  test('AC3: signed P/L for losses shows negative without leading +', () => {
+    const { container } = renderTooltip({ datum: contractLoss });
+    const tip = getTooltip(container);
+    expect(tip).toHaveTextContent('-$800.50');
+    expect(tip).toHaveTextContent('-45.3%');
+  });
+
+  test('AC4: tooltip flips to bubble left when within ~150px of right edge', () => {
+    const { container } = renderTooltip({
+      datum: contractGain,
+      anchorX: 700,
+      anchorY: 300,
+      containerWidth: 800,
+    });
+    const tip = getTooltip(container);
+    expect(tip.dataset.flipped).toBe('left');
+    expect(tip.style.left).toBe(`${700 - TOOLTIP_WIDTH - TOOLTIP_OFFSET_X}px`);
+  });
+
+  test('AC4: tooltip stays on bubble right side when outside the edge threshold', () => {
+    const { container } = renderTooltip({
+      datum: contractGain,
+      anchorX: 600,
+      anchorY: 300,
+      containerWidth: 800,
+    });
+    const tip = getTooltip(container);
+    expect(tip.dataset.flipped).toBe('right');
+    expect(tip.style.left).toBe(`${600 + TOOLTIP_OFFSET_X}px`);
+  });
+
+  test('AC4: edge threshold matches PRD §7.3 ~150px', () => {
+    expect(EDGE_THRESHOLD).toBe(150);
+    // sanity: at exactly the threshold, do not flip; one px past, flip
+    const { container: c1 } = renderTooltip({
+      datum: contractGain,
+      anchorX: 800 - EDGE_THRESHOLD,
+      anchorY: 300,
+      containerWidth: 800,
+    });
+    expect(getTooltip(c1).dataset.flipped).toBe('right');
+    const { container: c2 } = renderTooltip({
+      datum: contractGain,
+      anchorX: 800 - EDGE_THRESHOLD + 1,
+      anchorY: 300,
+      containerWidth: 800,
+    });
+    expect(getTooltip(c2).dataset.flipped).toBe('left');
+  });
+
+  test('renders nothing when datum is null', () => {
+    const { container } = renderTooltip({ datum: null });
+    expect(container.querySelector('.hover-tooltip')).toBeNull();
+  });
+});
