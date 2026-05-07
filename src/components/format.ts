@@ -27,7 +27,7 @@ export const formatSignedCurrency = (n: number): string => {
 
 export const formatCompactCurrency = (n: number): string => {
   if (!Number.isFinite(n)) return DASH;
-  return compactCurrencyFmt.format(n);
+  return compactCurrencyFmt.format(n).replace(/\.0(?=[A-Z]|$)/, '');
 };
 
 export const formatPercent = (n: number, decimals = 1): string => {
