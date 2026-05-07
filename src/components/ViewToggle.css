@@ -1,0 +1,34 @@
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid #dde2e8;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+
+.view-toggle__option {
+  border: 0;
+  background: transparent;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 13px;
+  color: #3d4651;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.view-toggle__option + .view-toggle__option {
+  border-left: 1px solid #dde2e8;
+}
+
+.view-toggle__option--active {
+  background-color: #2d6cdf;
+  color: #ffffff;
+}
+
+.view-toggle__option:focus-visible {
+  outline: 2px solid #2d6cdf;
+  outline-offset: -2px;
+}
