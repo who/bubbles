@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.beads
+.codegraph
+.github
+.cache
+ortus
+prd
+logs
+package-lock.json
+*.md
