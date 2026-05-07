@@ -81,3 +81,33 @@ npm run lint   # expect non-zero exit
 git checkout -- src/parsing/parseCsv.ts
 npm run lint   # expect zero exit (rule lifted once the offender is gone)
 ```
+
+## Deployment
+
+`npm run build` emits `dist/` — a self-contained static bundle (`index.html`, hashed JS/CSS in `dist/assets/`, plus `public/` passthroughs). The build reads no environment variables, so the same `dist/` deploys identically across hosts. Local smoke-test:
+
+```bash
+npm run build
+npx serve dist   # default http://localhost:3000
+```
+
+Three host options:
+
+**Vercel** — `vercel --prod` from the project root; Vercel auto-detects the Vite preset and uses `npm run build` / `dist`. No `vercel.json` required for an SPA with a single index entry.
+
+**Netlify** — `netlify deploy --prod --dir=dist` after `npm run build`, or wire continuous deploys with a minimal `netlify.toml`:
+
+```toml
+[build]
+  command = "npm run build"
+  publish = "dist"
+```
+
+**S3 + CloudFront** —
+
+```bash
+aws s3 sync dist s3://your-bucket --delete
+aws cloudfront create-invalidation --distribution-id <ID> --paths '/*'
+```
+
+Set the CloudFront distribution's default root object to `index.html`. No SPA-routing fallback is needed — the app uses no client-side router; every direct path either is `/` or 404s the same way it would on any host.
