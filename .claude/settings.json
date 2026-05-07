@@ -32,11 +32,10 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
-    ],
-    "ask": [
+      "Bash(git commit:*)",
       "Bash(git push:*)"
     ],
+    "ask": [],
     "defaultMode": "acceptEdits",
     "deny": [
       "Bash(sudo *)",
@@ -52,6 +51,7 @@
     "allowUnsandboxedCommands": false,
     "autoAllowBashIfSandboxed": true,
     "enabled": true,
+    "excludedCommands": ["bd", "bd *"],
     "failIfUnavailable": true,
     "filesystem": {
       "allowRead": ["~/.ssh"]
