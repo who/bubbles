@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import App from './App.tsx';
 
 const HEADER = 'Activity Date,Process Date,Settle Date,Instrument,Description,Trans Code,Quantity,Price,Amount';
@@ -107,6 +108,55 @@ test('results state hides the dropzone and DOM order is stats → chart → meth
   });
   expect(positions).toEqual([...positions].sort((a, b) => a - b));
   expect(positions.every((p) => p < Number.POSITIVE_INFINITY)).toBe(true);
+});
+
+test('bubbles-702.3: empty state shows dropzone copy, privacy note, and sample link', () => {
+  render(<App />);
+  expect(
+    screen.getByText('Drag your Robinhood activity CSV here, or click to browse.'),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText('Your data never leaves this browser.'),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: /use sample data/i }),
+  ).toBeInTheDocument();
+});
+
+test('bubbles-702.3: clicking Use sample data fetches /sample.csv and renders results', async () => {
+  const sampleCsv = VALID_CSV;
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    blob: async () => new Blob([sampleCsv], { type: 'text/csv' }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  try {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /use sample data/i }));
+
+    expect(fetchMock).toHaveBeenCalledWith('/sample.csv');
+
+    const plTile = await screen.findByRole('region', { name: /total realized p\/l/i });
+    expect(plTile.textContent ?? '').toMatch(/\+\$100\.00/);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+test('bubbles-702.3: failed sample fetch surfaces an error banner', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({ ok: false, blob: async () => new Blob() });
+  vi.stubGlobal('fetch', fetchMock);
+
+  try {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /use sample data/i }));
+
+    const banner = await screen.findByRole('alert');
+    expect(banner).toHaveTextContent(/Could not load sample data\./);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
 
 test('clicking Upload another returns to empty state and clears parsed data', async () => {

@@ -11,13 +11,14 @@ import './FileDropzone.css';
 export interface FileDropzoneProps {
   onFile: (file: File) => void;
   onError: (message: string) => void;
+  onUseSample?: () => void;
 }
 
 export const FILE_REJECT_MESSAGE = 'Only .csv files are supported.';
 
 const isCsv = (file: File): boolean => /\.csv$/i.test(file.name);
 
-function FileDropzone({ onFile, onError }: FileDropzoneProps) {
+function FileDropzone({ onFile, onError, onUseSample }: FileDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -101,6 +102,21 @@ function FileDropzone({ onFile, onError }: FileDropzoneProps) {
       <p className="file-dropzone__secondary">
         Your data never leaves this browser.
       </p>
+      {onUseSample ? (
+        <button
+          type="button"
+          className="file-dropzone__sample-link"
+          onClick={(e) => {
+            e.stopPropagation();
+            onUseSample();
+          }}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          Use sample data
+        </button>
+      ) : null}
       <input
         ref={inputRef}
         type="file"
@@ -114,5 +130,9 @@ function FileDropzone({ onFile, onError }: FileDropzoneProps) {
     </div>
   );
 }
+
+FileDropzone.defaultProps = {
+  onUseSample: undefined,
+};
 
 export default FileDropzone;

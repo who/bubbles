@@ -74,6 +74,21 @@ function App() {
     setStatus('error');
   }, []);
 
+  const handleUseSample = useCallback(async () => {
+    try {
+      const response = await fetch('/sample.csv');
+      if (!response.ok) {
+        throw new Error('Could not load sample data.');
+      }
+      const blob = await response.blob();
+      const file = new File([blob], 'sample.csv', { type: 'text/csv' });
+      handleFile(file);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Could not load sample data.';
+      handleError(message);
+    }
+  }, [handleFile, handleError]);
+
   const handleReset = useCallback(() => {
     setStatus('empty');
     setSummary(null);
@@ -100,7 +115,11 @@ function App() {
         </p>
       ) : null}
       {showDropzone ? (
-        <FileDropzone onFile={handleFile} onError={handleError} />
+        <FileDropzone
+          onFile={handleFile}
+          onError={handleError}
+          onUseSample={handleUseSample}
+        />
       ) : null}
       {status === 'parsing' && fileName ? (
         <div className="app__processing" role="status" aria-live="polite">

@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 220px;
+  min-height: 380px;
   padding: 2rem 1rem;
   border: 2px dashed #c4cad3;
   border-radius: 8px;
@@ -45,4 +45,25 @@
 
 .file-dropzone__input {
   display: none;
+}
+
+.file-dropzone__sample-link {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #2d6cdf;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.file-dropzone__sample-link:hover {
+  color: #1f4ea0;
+}
+
+.file-dropzone__sample-link:focus-visible {
+  outline: 2px solid #2d6cdf;
+  outline-offset: 2px;
+  border-radius: 2px;
 }

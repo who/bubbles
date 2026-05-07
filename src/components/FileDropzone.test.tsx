@@ -114,4 +114,37 @@ describe('FileDropzone', () => {
     fireEvent.keyDown(getDropzone(), { key: 'Enter' });
     expect(clickSpy).toHaveBeenCalledTimes(1);
   });
+
+  test('bubbles-702.3: empty state renders dropzone copy, privacy note, and sample link', () => {
+    render(<FileDropzone onFile={vi.fn()} onError={vi.fn()} onUseSample={vi.fn()} />);
+    expect(
+      screen.getByText('Drag your Robinhood activity CSV here, or click to browse.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Your data never leaves this browser.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /use sample data/i }),
+    ).toBeInTheDocument();
+  });
+
+  test('bubbles-702.3: sample link is omitted when onUseSample is not provided', () => {
+    render(<FileDropzone onFile={vi.fn()} onError={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /use sample data/i })).toBeNull();
+  });
+
+  test('bubbles-702.3: clicking sample link calls onUseSample and does not open the file picker', () => {
+    const onUseSample = vi.fn();
+    const onFile = vi.fn();
+    render(<FileDropzone onFile={onFile} onError={vi.fn()} onUseSample={onUseSample} />);
+
+    const input = getHiddenInput();
+    const clickSpy = vi.spyOn(input, 'click');
+
+    fireEvent.click(screen.getByRole('button', { name: /use sample data/i }));
+
+    expect(onUseSample).toHaveBeenCalledTimes(1);
+    expect(clickSpy).not.toHaveBeenCalled();
+    expect(onFile).not.toHaveBeenCalled();
+  });
 });
