@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { ClosedContract, ClosedTicker } from '../../pnl/index.ts';
+import { XAxis, YAxis } from './Axes.tsx';
 import Bubbles, { type BubbleDatum } from './Bubbles.tsx';
 import HoverTooltip, {
   type ContractTooltipDatum,
@@ -11,6 +12,14 @@ import './BubbleChart.css';
 
 export const CHART_WIDTH = 800;
 export const CHART_HEIGHT = 380;
+export const CHART_MARGIN = {
+  top: 16,
+  right: 24,
+  bottom: 32,
+  left: 56,
+} as const;
+export const PLOT_WIDTH = CHART_WIDTH - CHART_MARGIN.left - CHART_MARGIN.right;
+export const PLOT_HEIGHT = CHART_HEIGHT - CHART_MARGIN.top - CHART_MARGIN.bottom;
 
 export type BubbleChartProps =
   | { data: readonly ClosedContract[]; groupingMode: 'contract' }
@@ -89,13 +98,13 @@ function BubbleChart(props: BubbleChartProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const bubbleData = useMemo(() => toBubbleData(props), [props]);
-  const xScale = useMemo(() => buildXScale(bubbleData, CHART_WIDTH), [bubbleData]);
-  const yScale = useMemo(() => buildYScale(bubbleData, CHART_HEIGHT), [bubbleData]);
+  const xScale = useMemo(() => buildXScale(bubbleData, PLOT_WIDTH), [bubbleData]);
+  const yScale = useMemo(() => buildYScale(bubbleData, PLOT_HEIGHT), [bubbleData]);
   const rScale = useMemo(() => buildRScale(bubbleData), [bubbleData]);
 
   const hovered = findHovered(props, hoveredId);
-  const anchorX = hovered ? xScale(hovered.closeDate) : 0;
-  const anchorY = hovered ? yScale(hovered.pctReturn) : 0;
+  const anchorX = hovered ? CHART_MARGIN.left + xScale(hovered.closeDate) : 0;
+  const anchorY = hovered ? CHART_MARGIN.top + yScale(hovered.pctReturn) : 0;
 
   return (
     <div
@@ -112,13 +121,17 @@ function BubbleChart(props: BubbleChartProps) {
         role="img"
         aria-label="Realized gain/loss bubble chart"
       >
-        <Bubbles
-          data={bubbleData}
-          xScale={xScale}
-          yScale={yScale}
-          rScale={rScale}
-          onHoverChange={setHoveredId}
-        />
+        <g transform={`translate(${CHART_MARGIN.left}, ${CHART_MARGIN.top})`}>
+          <YAxis yScale={yScale} plotWidth={PLOT_WIDTH} />
+          <XAxis xScale={xScale} plotHeight={PLOT_HEIGHT} />
+          <Bubbles
+            data={bubbleData}
+            xScale={xScale}
+            yScale={yScale}
+            rScale={rScale}
+            onHoverChange={setHoveredId}
+          />
+        </g>
       </svg>
       <HoverTooltip
         datum={hovered ? hovered.datum : null}

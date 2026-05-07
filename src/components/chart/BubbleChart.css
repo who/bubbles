@@ -7,3 +7,14 @@
   display: block;
   background-color: #ffffff;
 }
+
+.bubble-chart__tick-label {
+  font-size: 11px;
+  font-family: inherit;
+  fill: #5A6470;
+}
+
+.bubble-chart__y-grid-line,
+.bubble-chart__y-zero-line {
+  stroke-width: 1;
+}
