@@ -60,3 +60,67 @@ test('uploading a CSV missing a required column shows the §9 error verbatim', a
     "Couldn't find required column: Amount. Is this a Robinhood activity export?",
   );
 });
+
+test('results state renders chart card with title, methodology footnote, and Upload another button', async () => {
+  render(<App />);
+  const file = new File([VALID_CSV], 'trades.csv', { type: 'text/csv' });
+  fireEvent.change(getHiddenInput(), { target: { files: [file] } });
+
+  await screen.findByRole('region', { name: /total realized p\/l/i });
+
+  const chartCard = screen.getByRole('region', { name: /realized gain\/loss details/i });
+  expect(chartCard).toBeInTheDocument();
+  expect(chartCard).toHaveTextContent('Chart based on 1 record.');
+
+  expect(
+    screen.getByText(/Realized P\/L is computed from matched BTO\/STC pairs/i),
+  ).toBeInTheDocument();
+
+  expect(
+    screen.getByRole('button', { name: /upload another/i }),
+  ).toBeInTheDocument();
+});
+
+test('results state hides the dropzone and DOM order is stats → chart → methodology → upload-another', async () => {
+  const { container } = render(<App />);
+  const file = new File([VALID_CSV], 'trades.csv', { type: 'text/csv' });
+  fireEvent.change(getHiddenInput(), { target: { files: [file] } });
+
+  await screen.findByRole('region', { name: /total realized p\/l/i });
+
+  expect(container.querySelector('input[type="file"]')).toBeNull();
+
+  const main = container.querySelector('main') as HTMLElement;
+  const stats = main.querySelector('.stats-strip') as HTMLElement;
+  const chart = main.querySelector('.app__chart-card') as HTMLElement;
+  const methodology = main.querySelector('.app__methodology') as HTMLElement;
+  const button = main.querySelector('.app__upload-another') as HTMLElement;
+
+  expect(stats).not.toBeNull();
+  expect(chart).not.toBeNull();
+  expect(methodology).not.toBeNull();
+  expect(button).not.toBeNull();
+
+  const positions = [stats, chart, methodology, button].map((el) => {
+    const idx = Array.prototype.indexOf.call(main.children, el);
+    return idx === -1 ? Number.POSITIVE_INFINITY : idx;
+  });
+  expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  expect(positions.every((p) => p < Number.POSITIVE_INFINITY)).toBe(true);
+});
+
+test('clicking Upload another returns to empty state and clears parsed data', async () => {
+  render(<App />);
+  const file = new File([VALID_CSV], 'trades.csv', { type: 'text/csv' });
+  fireEvent.change(getHiddenInput(), { target: { files: [file] } });
+
+  await screen.findByRole('region', { name: /total realized p\/l/i });
+
+  fireEvent.click(screen.getByRole('button', { name: /upload another/i }));
+
+  expect(screen.queryByRole('region', { name: /total realized p\/l/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: /realized gain\/loss details/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /upload another/i })).not.toBeInTheDocument();
+
+  expect(screen.getByRole('button', { name: /upload csv file/i })).toBeInTheDocument();
+});

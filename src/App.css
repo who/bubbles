@@ -33,3 +33,54 @@
 .app__warnings li + li {
   margin-top: 0.25rem;
 }
+
+.app__chart-card {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background-color: #ffffff;
+  border: 1px solid #dde2e8;
+  border-radius: 8px;
+}
+
+.app__chart-header {
+  margin-bottom: 1rem;
+}
+
+.app__chart-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.app__chart-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.app__chart-slot {
+  min-height: 380px;
+}
+
+.app__methodology {
+  margin: 1.5rem 0 0;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.app__upload-another {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: #ffffff;
+  color: #1f2937;
+  border: 1px solid #dde2e8;
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.app__upload-another:hover {
+  background-color: #f5f6f8;
+}

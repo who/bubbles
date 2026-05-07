@@ -153,22 +153,15 @@ export CARGO_HOME="$PWD/.cache/cargo"
 export GOMODCACHE="$PWD/.cache/go-mod"
 export GOCACHE="$PWD/.cache/go-build"
 
-# bd serialization (bubbles-m51.1) — prepend ortus/ to PATH so `bd` resolves
-# to the bd-locked flock wrapper for this Ralph tree (and any child Claude
-# sessions it spawns). The wrapper serializes bd invocations against a
-# project-local lockfile, defeating concurrent dolt sql-server launches that
-# otherwise contend for .beads/dolt/.dolt/noms/LOCK. Override the 60s wait
-# default with BD_FLOCK_WAIT=<seconds>.
-export PATH="$PWD/ortus:$PATH"
-
-# bd retry helper (bubbles-m51.3) — defense-in-depth around the flock wrapper.
-# Source ortus/bd_retry.sh so any direct `bd` invocations in this script (or
-# scripts that source this) can use `bd_retry` to absorb the brief race when an
-# ephemeral dolt sql-server is shutting down while the next is starting. New
-# scripts should prefer `bd_retry` over plain `bd`. Override retry count with
-# BD_RETRY_MAX=<n> (default 5).
-# shellcheck source=bd_retry.sh
-. "$(dirname "$0")/bd_retry.sh"
+# bd flock wrapper removed — Claude Code's sandbox excludedCommands matches
+# against the PATH-resolved binary, not the typed token. Prepending $PWD/ortus
+# (so `bd` resolves to ortus/bd) means the resolved path is an absolute path
+# the `bd *` glob doesn't match, so every bd call from Claude's child runs
+# *sandboxed* and hangs on dolt loopback. With the wrapper out of PATH, bd
+# resolves to the real binary, the exclusion matches, and bd talks to dolt
+# directly. bd 1.0.3 handles its own dolt lifecycle, and Claude already
+# serializes Bash calls within a single Ralph, so the wrapper's only benefit
+# (multi-Ralph concurrency) wasn't worth the global deadlock risk.
 
 # Claude invocation routing (ortus-lfft.2) — when --docker is set,
 # route the inner claude session through `docker sandbox run claude --name
