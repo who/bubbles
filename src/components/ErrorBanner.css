@@ -1,0 +1,43 @@
+.error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  background-color: #fdecec;
+  color: #b3261e;
+  border: 1px solid #f3c2bf;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.error-banner__message {
+  flex: 1;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.error-banner__dismiss {
+  flex: 0 0 auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.error-banner__dismiss:hover {
+  background-color: rgba(179, 38, 30, 0.08);
+  border-color: #f3c2bf;
+}
+
+.error-banner__dismiss:focus-visible {
+  outline: 2px solid #b3261e;
+  outline-offset: 2px;
+}
