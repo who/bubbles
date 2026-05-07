@@ -58,3 +58,26 @@ Credentials are cached across runs in the `docker-claude-sandbox-data` Docker vo
 ### Tier 2 on Linux: `enableWeakerNestedSandbox`
 
 On Linux, running the native sandbox inside the Docker container means nesting bubblewrap inside another containment layer, and nested bubblewrap has reduced isolation guarantees — so `.claude/settings.json` sets `enableWeakerNestedSandbox: true` to let the inner sandbox start under these conditions. In Tier 2 the container is the primary security boundary, and the inner native sandbox runs as defense-in-depth on top of it. The security trade-off — weaker nested isolation in exchange for the layered containment Tier 2 provides — is acceptable in this configuration, because the container itself already enforces the strong fs/net boundary against the host.
+
+## Privacy verification
+
+Per PRD §8.4, file contents must never leave the browser. The repo enforces this in two layers:
+
+**Static (CI):** `.eslintrc.cjs` adds an override scoped to `src/parsing/**` and `src/pnl/**` that bans `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `navigator.sendBeacon`, and `window.fetch` via `no-restricted-globals` / `no-restricted-properties`. Tests and `__fixtures__` are excluded (not shipped to users). `npm run lint` fails if any of these appear in production parsing/engine code.
+
+**Manual (per release):**
+
+1. `npm run build && npx serve dist`
+2. Open Chrome DevTools → Network tab; clear log; check "Preserve log".
+3. Drop a real Robinhood export onto the dropzone.
+4. Confirm zero requests fire whose payload contains file content. The only requests should be the static asset loads (HTML, JS, CSS) served from the local origin.
+
+**Smoke-testing the lint rule locally:**
+
+```bash
+# Should fail with no-restricted-globals on `fetch`
+printf 'fetch("/x");\n' >> src/parsing/parseCsv.ts
+npm run lint   # expect non-zero exit
+git checkout -- src/parsing/parseCsv.ts
+npm run lint   # expect zero exit (rule lifted once the offender is gone)
+```

@@ -48,5 +48,25 @@ module.exports = {
         'import/no-extraneous-dependencies': 'off',
       },
     },
+    {
+      // PRD §8.4 — privacy: parsing & engine modules must never make network calls.
+      // Excludes test files and fixtures (not shipped to users).
+      files: ['src/parsing/**/*.{ts,tsx}', 'src/pnl/**/*.{ts,tsx}'],
+      excludedFiles: ['**/*.test.{ts,tsx}', '**/__fixtures__/**'],
+      rules: {
+        'no-restricted-globals': [
+          'error',
+          { name: 'fetch', message: 'PRD §8.4 — privacy: no network calls in src/parsing/ or src/pnl/.' },
+          { name: 'XMLHttpRequest', message: 'PRD §8.4 — privacy: no network calls in src/parsing/ or src/pnl/.' },
+          { name: 'WebSocket', message: 'PRD §8.4 — privacy: no network calls in src/parsing/ or src/pnl/.' },
+          { name: 'EventSource', message: 'PRD §8.4 — privacy: no network calls in src/parsing/ or src/pnl/.' },
+        ],
+        'no-restricted-properties': [
+          'error',
+          { object: 'navigator', property: 'sendBeacon', message: 'PRD §8.4 — privacy: no network calls in src/parsing/ or src/pnl/.' },
+          { object: 'window', property: 'fetch', message: 'PRD §8.4 — privacy: no network calls in src/parsing/ or src/pnl/.' },
+        ],
+      },
+    },
   ],
 };
