@@ -33,15 +33,27 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Single-instance guard. The 49-dolt pile-up on 2026-05-07 was caused by
-# 6 concurrent ralph instances racing each other through bd's EnsureRunning.
-# A flock prevents the race entirely. Kernel releases the lock when the
-# process holding it exits, so a crashed prior ralph doesn't block new starts.
+# Single-instance guard. Concurrent ralph instances against the same repo
+# race each other through bd's auto-start path and pile up orphan dolt
+# sql-server processes (observed: 49 zombies in one bubbles session,
+# 2026-05-07).
+#
+# We re-exec ourselves under flock(1) instead of `exec 9>file; flock -n 9`
+# because the latter leaks the lock to children: dolt sql-server and
+# `claude -p` inherit the lock FD via fork, and per flock(2) "the lock is
+# released when all such [duplicate] descriptors have been closed" — so
+# the lock outlives ralph.sh whenever children survive (observed in
+# bubbles after a SIGKILL recovery 2026-05-07). flock(1) opens the lock
+# file in its own process, marks the FD close-on-exec, and exec's our
+# script — children of us never see the FD, the lock stays scoped to
+# flock(1), and when our script exits flock(1) releases cleanly.
 mkdir -p .beads
-exec 9>".beads/ralph.flock"
-if ! flock -n 9; then
-  echo "Another ralph is already running against this repo. Exiting." >&2
-  exit 0
+if [ -z "${RALPH_LOCK_HELD:-}" ]; then
+  export RALPH_LOCK_HELD=1
+  # -n: non-blocking; -E 0: exit 0 on conflict (polite refusal, not error)
+  exec flock -n -E 0 .beads/ralph.flock "$0" "$@"
+  echo "ERROR: failed to re-exec under flock" >&2
+  exit 1
 fi
 
 mkdir -p logs
@@ -58,14 +70,15 @@ log "Watch live:"
 log "  Human-readable: ./ortus/tail.sh         (auto-follows all logs)"
 log "  Raw output:     tail -f $LOG_FILE"
 
-# Single long-lived dolt sql-server owned by this ralph session
-# (bubbles-m51.2 redesign). With bd in sandbox.excludedCommands, every bd
-# call runs on the host and connects to this server via .beads/dolt-server.port.
-# Eliminates the per-iteration auto-start race that produced the 2026-05-07
-# 49-process pile-up.
+# Single long-lived dolt sql-server owned by this ralph session. With bd in
+# sandbox.excludedCommands, every bd call inside the inner Claude session
+# runs on the host and connects to this server via .beads/dolt-server.port.
+# Eliminates the per-iteration auto-start race that pile-ups N orphan dolts
+# when waitForReady times out (observed in bubbles 2026-05-07).
 #
 # Per upstream TROUBLESHOOTING.md and gastownhall/beads#2933, we never touch
-# noms/LOCK directly — bd manages those. We only manage bd-owned state files.
+# noms/LOCK directly — bd manages those. We only manage bd-owned state files
+# (.beads/dolt-server.{lock,pid,port}).
 start_dolt() {
   if [ -f .beads/dolt-server.pid ]; then
     local pid
@@ -84,7 +97,15 @@ start_dolt() {
 stop_dolt() {
   log "Stopping shared dolt sql-server..."
   bd dolt stop 2>&1 | tee -a "$LOG_FILE" || true
+  # Belt + suspenders: even with the flock(1) wrapper above, kill any
+  # descendants we still have. SIGKILL on ralph.sh (e.g. from `pkill -9`)
+  # bypasses this trap entirely, so we can't rely on it as the sole
+  # mechanism — but on graceful EXIT/INT/TERM this prevents orphaned
+  # claude or dolt children from sitting around after we're gone.
+  pkill -KILL -P $$ 2>/dev/null || true
 }
+# trap fires on normal exit, ctrl-c, and SIGTERM — guarantees cleanup so
+# the next ralph (or other bd user) finds noms/LOCK released.
 trap stop_dolt EXIT INT TERM
 start_dolt
 
@@ -177,15 +198,20 @@ export CARGO_HOME="$PWD/.cache/cargo"
 export GOMODCACHE="$PWD/.cache/go-mod"
 export GOCACHE="$PWD/.cache/go-build"
 
-# bd flock wrapper removed — Claude Code's sandbox excludedCommands matches
-# against the PATH-resolved binary, not the typed token. Prepending $PWD/ortus
-# (so `bd` resolves to ortus/bd) means the resolved path is an absolute path
-# the `bd *` glob doesn't match, so every bd call from Claude's child runs
-# *sandboxed* and hangs on dolt loopback. With the wrapper out of PATH, bd
-# resolves to the real binary, the exclusion matches, and bd talks to dolt
-# directly. bd 1.0.3 handles its own dolt lifecycle, and Claude already
-# serializes Bash calls within a single Ralph, so the wrapper's only benefit
-# (multi-Ralph concurrency) wasn't worth the global deadlock risk.
+# Note: we deliberately DO NOT disable bd's per-call auto-start here.
+# `bd config set dolt.auto-start false` (or BEADS_DOLT_AUTO_START=0) breaks
+# bd usage outside ralph — any parallel terminal or separate Claude session
+# in this repo can no longer file issues until ralph is running. The
+# flock guard + ralph-owned dolt lifecycle above are sufficient to prevent
+# the orphan-pile-up failure mode (bubbles 2026-05-07); auto-start disable
+# was belt-and-suspenders that wasn't worth the parallel-use cost.
+
+# Note: previous versions of this script wrapped `bd` calls in a flock
+# helper that serialized concurrent dolt sql-server starts, and prepended
+# the wrapper directory to PATH. Both were removed (see ortus-ugky):
+# under the OS sandbox the flock-wrapped bd would hang on a sandboxed
+# loopback connection and hold the lock project-wide. bd 1.0.3's built-in
+# dolt lifecycle handling supersedes the narrow concurrency benefit.
 
 # Claude invocation routing (ortus-lfft.2) — when --docker is set,
 # route the inner claude session through `docker sandbox run claude --name
