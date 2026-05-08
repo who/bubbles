@@ -176,13 +176,13 @@ Depends on: <closing-id>
 **Non-blocking.** Step 7.5 shall never block step 8. If `bd create` returns non-zero, if `codegraph_impact` errors, or if the gate evaluation throws, log to a comment if convenient and proceed to step 8 — same posture as step 6.5. If `codegraph_available` is false, or if the **CodeGraph v1** block's `oos_callers` is `none`, skip silently.
 
 8. **Close**: Run `bd close <id> --reason="<brief summary>"`
-9. **Commit & Push**: Stage, commit with issue ID in message, then run:
+9. **Commit & Push**: Stage, commit with issue ID in message. Check `git remote` — if it outputs nothing, you're done (local-only project). Otherwise run these in order, **each as its own separate Bash tool call** (never chain with `&&` or `;` — that wraps everything in `bash -c` and `bd dolt push` loses its sandbox exemption, becoming a sandboxed child of bash and hanging on dolt):
 
-       if [ -n "$(git remote)" ]; then
-         git pull --rebase --autostash && bd dolt push && git push
-       else
-         echo "No git remote configured; skipping push (local-only project)."
-       fi
+       git pull --rebase --autostash
+       bd dolt push
+       git push
+
+   If `bd dolt push` fails, still run `git push` — the bd state is already in `.beads/issues.jsonl` which the commit included, so the work survives a sidecar-push failure.
 10. **Exit**: Output the appropriate signal (see Completion Signals) and stop. You are done. The loop will restart you for the next task.
 
 If you cannot complete the claimed issue (dependency, technical blocker, persistent test failure you cannot resolve), add a comment explaining the blocker via `bd comments add <id> "..."`, then output `<promise>BLOCKED</promise>` and stop.
