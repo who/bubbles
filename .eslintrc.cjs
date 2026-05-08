@@ -40,6 +40,10 @@ module.exports = {
     '.eslintrc.cjs',
     'vite.config.*',
     'vitest.config.*',
+    'playwright.config.*',
+    'tests/e2e/**',
+    'test-results/**',
+    'playwright-report/**',
   ],
   overrides: [
     {
