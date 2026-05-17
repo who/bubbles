@@ -1,16 +1,16 @@
 .hover-tooltip {
   position: absolute;
-  background-color: #ffffff;
-  border: 1px solid #dde2e8;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
   border-top-width: 3px;
   border-top-style: solid;
   border-radius: 6px;
   padding: 10px 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px var(--color-tooltip-shadow);
   pointer-events: none;
   transform: translateY(-100%);
   font-size: 13px;
-  color: #1f2937;
+  color: var(--color-text-primary);
   line-height: 1.35;
   z-index: 10;
 }
@@ -24,7 +24,7 @@
 .hover-tooltip__date {
   margin: 2px 0 8px 0;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-secondary);
 }
 
 .hover-tooltip__fields {
@@ -42,7 +42,7 @@
 
 .hover-tooltip__row dt {
   margin: 0;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   font-size: 12px;
 }
 
@@ -53,17 +53,17 @@
 }
 
 .hover-tooltip__value--gain {
-  color: #2E7D32;
+  color: var(--color-success-fg);
 }
 
 .hover-tooltip__value--loss {
-  color: #C62828;
+  color: var(--color-loss-fg);
 }
 
 .hover-tooltip__trailing {
   margin: 8px 0 0 0;
   font-size: 12px;
-  color: #6b7280;
-  border-top: 1px solid #eef1f4;
+  color: var(--color-text-secondary);
+  border-top: 1px solid var(--color-border-divider);
   padding-top: 6px;
 }

@@ -6,3 +6,6 @@ export { default as ViewToggle } from './ViewToggle.tsx';
 export type { ViewToggleProps, ViewMode, ViewToggleCounts } from './ViewToggle.tsx';
 export { default as ErrorBanner } from './ErrorBanner.tsx';
 export type { ErrorBannerProps } from './ErrorBanner.tsx';
+export { default as ThemeToggle } from './ThemeToggle.tsx';
+export { useTheme, THEME_STORAGE_KEY } from './useTheme.ts';
+export type { Theme } from './useTheme.ts';

@@ -2,13 +2,85 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial,
     sans-serif;
   line-height: 1.5;
+
+  --color-bg-page: #f5f6f8;
+  --color-bg-surface: #ffffff;
+  --color-bg-surface-alt: #eef0f3;
+  --color-bg-surface-hover: #f5f6f8;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-text-muted: #5a6470;
+  --color-text-body: #213547;
+  --color-text-label: #3d4651;
+  --color-border-subtle: #dde2e8;
+  --color-border-dashed: #c4cad3;
+  --color-border-divider: #eef1f4;
+  --color-accent: #2d6cdf;
+  --color-accent-hover: #1f4ea0;
+  --color-accent-on: #ffffff;
+  --color-accent-tint: #eef4ff;
+  --color-accent-ring: rgba(45, 108, 223, 0.25);
+  --color-progress-track: #eef0f3;
+  --color-progress-fill: #4b80ff;
+  --color-error-bg: #fdecec;
+  --color-error-fg: #b3261e;
+  --color-error-border: #f3c2bf;
+  --color-error-dismiss-hover: rgba(179, 38, 30, 0.08);
+  --color-warning-bg: #fff7e6;
+  --color-warning-fg: #92400e;
+  --color-warning-border: #fde68a;
+  --color-success-fg: #2e7d32;
+  --color-loss-fg: #c62828;
+  --color-chart-bg: #ffffff;
+  --color-chart-axis-zero: #3d4651;
+  --color-chart-axis-grid: #e5e7eb;
+  --color-tooltip-shadow: rgba(0, 0, 0, 0.08);
+
   color-scheme: light;
-  color: #213547;
-  background-color: #f5f6f8;
+  color: var(--color-text-body);
+  background-color: var(--color-bg-page);
+}
+
+[data-theme='dark'] {
+  --color-bg-page: #0f1419;
+  --color-bg-surface: #1a1f2a;
+  --color-bg-surface-alt: #232a37;
+  --color-bg-surface-hover: #232a37;
+  --color-text-primary: #e5e7eb;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted: #9aa4b2;
+  --color-text-body: #d4d8de;
+  --color-text-label: #c4cad3;
+  --color-border-subtle: #2d3441;
+  --color-border-dashed: #3d4452;
+  --color-border-divider: #2d3441;
+  --color-accent: #5b8def;
+  --color-accent-hover: #82a6f4;
+  --color-accent-on: #ffffff;
+  --color-accent-tint: #1c2536;
+  --color-accent-ring: rgba(91, 141, 239, 0.35);
+  --color-progress-track: #2d3441;
+  --color-progress-fill: #5b8def;
+  --color-error-bg: #3a1c1c;
+  --color-error-fg: #f5a3a0;
+  --color-error-border: #6b2e2c;
+  --color-error-dismiss-hover: rgba(245, 163, 160, 0.12);
+  --color-warning-bg: #3a2e0e;
+  --color-warning-fg: #fbbf24;
+  --color-warning-border: #6b5018;
+  --color-success-fg: #66bb6a;
+  --color-loss-fg: #ef5350;
+  --color-chart-bg: #1a1f2a;
+  --color-chart-axis-zero: #c4cad3;
+  --color-chart-axis-grid: #2d3441;
+  --color-tooltip-shadow: rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #f5f6f8;
+  color: var(--color-text-body);
+  background-color: var(--color-bg-page);
 }

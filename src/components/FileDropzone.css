@@ -6,10 +6,10 @@
   gap: 0.5rem;
   min-height: 380px;
   padding: 2rem 1rem;
-  border: 2px dashed #c4cad3;
+  border: 2px dashed var(--color-border-dashed);
   border-radius: 8px;
-  background-color: #ffffff;
-  color: #3d4651;
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-label);
   cursor: pointer;
   text-align: center;
   transition:
@@ -20,15 +20,15 @@
 }
 
 .file-dropzone:focus-visible {
-  border-color: #2d6cdf;
-  box-shadow: 0 0 0 3px rgba(45, 108, 223, 0.25);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-ring);
 }
 
 .file-dropzone--drag-over {
   border-style: solid;
   border-width: 3px;
-  border-color: #2d6cdf;
-  background-color: #eef4ff;
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-tint);
 }
 
 .file-dropzone__primary {
@@ -40,7 +40,7 @@
 .file-dropzone__secondary {
   margin: 0;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
 }
 
 .file-dropzone__input {
@@ -52,18 +52,18 @@
   padding: 0;
   background: none;
   border: none;
-  color: #2d6cdf;
+  color: var(--color-accent);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
 }
 
 .file-dropzone__sample-link:hover {
-  color: #1f4ea0;
+  color: var(--color-accent-hover);
 }
 
 .file-dropzone__sample-link:focus-visible {
-  outline: 2px solid #2d6cdf;
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
   border-radius: 2px;
 }

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FileDropzone, StatsStrip, ViewToggle } from './components/index.ts';
+import {
+  FileDropzone,
+  StatsStrip,
+  ThemeToggle,
+  ViewToggle,
+} from './components/index.ts';
 import type { ViewMode } from './components/index.ts';
 import { BubbleChart } from './components/chart/index.ts';
 import { parseCsv } from './parsing/index.ts';
@@ -137,7 +142,10 @@ function App() {
 
   return (
     <main className="app">
-      <h1>PnL Bubbles</h1>
+      <header className="app__header">
+        <h1>PnL Bubbles</h1>
+        <ThemeToggle />
+      </header>
       {error ? (
         <p className="app__error" role="alert">
           {error}

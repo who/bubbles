@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #ffffff;
+  background-color: var(--color-chart-bg);
   border-radius: 6px;
 }
 
@@ -15,23 +15,31 @@
   margin: 0;
   padding: 0 1.5rem;
   text-align: center;
-  color: #5A6470;
+  color: var(--color-text-muted);
   font-size: 0.9375rem;
   line-height: 1.5;
 }
 
 .bubble-chart__svg {
   display: block;
-  background-color: #ffffff;
+  background-color: var(--color-chart-bg);
 }
 
 .bubble-chart__tick-label {
   font-size: 11px;
   font-family: inherit;
-  fill: #5A6470;
+  fill: var(--color-text-muted);
 }
 
 .bubble-chart__y-grid-line,
 .bubble-chart__y-zero-line {
   stroke-width: 1;
+}
+
+[data-theme='dark'] .bubble-chart__y-zero-line {
+  stroke: var(--color-chart-axis-zero);
+}
+
+[data-theme='dark'] .bubble-chart__y-grid-line {
+  stroke: var(--color-chart-axis-grid);
 }
