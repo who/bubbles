@@ -7,7 +7,7 @@ import HoverTooltip, {
   type TickerTooltipDatum,
   type TooltipDatum,
 } from './HoverTooltip.tsx';
-import { buildRScale, buildXScale, buildYScale } from './scales.ts';
+import { buildRScale, buildXScale, buildYScale, distinctDates } from './scales.ts';
 import './BubbleChart.css';
 
 export const CHART_WIDTH = 800;
@@ -117,6 +117,7 @@ function BubbleChart(props: BubbleChartProps) {
   }
 
   const xScale = buildXScale(bubbleData, PLOT_WIDTH);
+  const xDates = distinctDates(bubbleData);
   const yScale = buildYScale(bubbleData, PLOT_HEIGHT);
   const rScale = buildRScale(bubbleData);
 
@@ -141,7 +142,7 @@ function BubbleChart(props: BubbleChartProps) {
       >
         <g transform={`translate(${CHART_MARGIN.left}, ${CHART_MARGIN.top})`}>
           <YAxis yScale={yScale} plotWidth={PLOT_WIDTH} />
-          <XAxis xScale={xScale} plotHeight={PLOT_HEIGHT} />
+          <XAxis xScale={xScale} dates={xDates} plotHeight={PLOT_HEIGHT} />
           <Bubbles
             data={bubbleData}
             xScale={xScale}

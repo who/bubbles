@@ -3,6 +3,7 @@ import {
   buildRScale,
   buildXScale,
   buildYScale,
+  distinctDates,
   type ChartDatum,
 } from './scales.ts';
 
@@ -123,5 +124,39 @@ describe('buildRScale (PRD §7.2 bubble radius)', () => {
   test('empty data does not throw and returns [4,42] range', () => {
     const scale = buildRScale([]);
     expect(scale.range()).toEqual([4, 42]);
+  });
+});
+
+describe('distinctDates (one tick per uploaded date)', () => {
+  test('returns one entry per distinct date, sorted chronologically', () => {
+    const data = [
+      datum({ closeDate: new Date(2026, 3, 7) }),
+      datum({ closeDate: new Date(2026, 3, 5) }),
+      datum({ closeDate: new Date(2026, 3, 6) }),
+    ];
+    expect(distinctDates(data).map((d) => d.getTime())).toEqual([
+      new Date(2026, 3, 5).getTime(),
+      new Date(2026, 3, 6).getTime(),
+      new Date(2026, 3, 7).getTime(),
+    ]);
+  });
+
+  test('collapses duplicate dates to a single entry', () => {
+    const data = [
+      datum({ closeDate: new Date(2026, 3, 5) }),
+      datum({ closeDate: new Date(2026, 3, 5) }),
+      datum({ closeDate: new Date(2026, 3, 6) }),
+    ];
+    expect(distinctDates(data)).toHaveLength(2);
+  });
+
+  test('preserves all N dates for an N-day span (AC: N dates → N points)', () => {
+    const data = [0, 1, 2, 3, 4, 5, 6].map((offset) =>
+      datum({ closeDate: new Date(2026, 3, 5 + offset) }));
+    expect(distinctDates(data)).toHaveLength(7);
+  });
+
+  test('empty data returns an empty array', () => {
+    expect(distinctDates([])).toEqual([]);
   });
 });

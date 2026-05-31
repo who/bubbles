@@ -1,5 +1,4 @@
 import { format } from 'date-fns';
-import { timeWeek } from 'd3-time';
 import type { ScaleLinear, ScaleTime } from 'd3-scale';
 
 export const Y_TICK_INCREMENT = 250;
@@ -11,15 +10,14 @@ const Y_LABEL_DX = 8;
 
 export interface XAxisProps {
   xScale: ScaleTime<number, number>;
+  dates: readonly Date[];
   plotHeight: number;
 }
 
-export function XAxis({ xScale, plotHeight }: XAxisProps) {
-  const [start, end] = xScale.domain() as [Date, Date];
-  const ticks = timeWeek.range(start, end);
+export function XAxis({ xScale, dates, plotHeight }: XAxisProps) {
   return (
     <g className="bubble-chart__x-axis" data-testid="bubble-chart-x-axis">
-      {ticks.map((d) => (
+      {dates.map((d) => (
         <g
           key={d.toISOString()}
           className="tick bubble-chart__x-tick"

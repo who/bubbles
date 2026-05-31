@@ -177,8 +177,8 @@ describe('BubbleChart (bubbles-xad.5 grouping views)', () => {
     expect(getTooltip(container)).toBeNull();
   });
 
-  test('xad.2: axes render with weekly X ticks and 250%-step Y gridlines', () => {
-    // Apr 5 - Apr 25 contracts → padded X domain [Apr 3, Apr 27): 4 Sundays
+  test('xad.2: axes render one X tick per distinct date and 250%-step Y gridlines', () => {
+    // Two distinct close dates → 2 X ticks, one labeled per date
     // pctReturns -100/+100 → Y domain [-250, 250]: 3 ticks (-250, 0, 250)
     const data: ClosedContract[] = [
       mkContract({
@@ -200,12 +200,12 @@ describe('BubbleChart (bubbles-xad.5 grouping views)', () => {
     const yAxis = container.querySelector('.bubble-chart__y-axis');
     expect(xAxis).not.toBeNull();
     expect(yAxis).not.toBeNull();
-    expect(xAxis!.querySelectorAll('.tick')).toHaveLength(4);
+    expect(xAxis!.querySelectorAll('.tick')).toHaveLength(2);
     expect(yAxis!.querySelectorAll('.tick')).toHaveLength(3);
 
     const xLabels = Array.from(xAxis!.querySelectorAll('.tick text'))
       .map((t) => t.textContent);
-    expect(xLabels).toEqual(['Apr 5', 'Apr 12', 'Apr 19', 'Apr 26']);
+    expect(xLabels).toEqual(['Apr 5', 'Apr 25']);
 
     const yLabels = Array.from(yAxis!.querySelectorAll('.tick text'))
       .map((t) => t.textContent);

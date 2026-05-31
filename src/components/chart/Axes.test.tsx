@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import { XAxis, YAxis, ZERO_LINE_STROKE } from './Axes.tsx';
-import { buildXScale, buildYScale, type ChartDatum } from './scales.ts';
+import { buildXScale, buildYScale, distinctDates, type ChartDatum } from './scales.ts';
 
 const PLOT_WIDTH = 720;
 const PLOT_HEIGHT = 320;
@@ -17,7 +17,7 @@ const renderXAxis = (data: readonly ChartDatum[]) => {
   const xScale = buildXScale(data, PLOT_WIDTH);
   return render(
     <svg>
-      <XAxis xScale={xScale} plotHeight={PLOT_HEIGHT} />
+      <XAxis xScale={xScale} dates={distinctDates(data)} plotHeight={PLOT_HEIGHT} />
     </svg>,
   );
 };
@@ -32,26 +32,35 @@ const renderYAxis = (data: readonly ChartDatum[]) => {
 };
 
 describe('XAxis (PRD §7.2 X axis)', () => {
-  test('AC1: weekly ticks render across the data range', () => {
-    // Apr 5 - Apr 25 → padded domain [Apr 3 (Fri), Apr 27 (Mon))
-    // Sundays in [Apr 3, Apr 27): Apr 5, 12, 19, 26 → 4 ticks
-    const data = [
-      datum({ closeDate: new Date(2026, 3, 5) }),
-      datum({ closeDate: new Date(2026, 3, 25) }),
-    ];
+  test('AC1: one tick per distinct date in the data', () => {
+    // Seven consecutive days → seven ticks, one per date
+    const data = [0, 1, 2, 3, 4, 5, 6].map((offset) =>
+      datum({ closeDate: new Date(2026, 3, 5 + offset) }));
     const { container } = renderXAxis(data);
-    expect(container.querySelectorAll('.tick')).toHaveLength(4);
+    expect(container.querySelectorAll('.tick')).toHaveLength(7);
   });
 
-  test('AC1: tick labels formatted via date-fns "MMM d"', () => {
+  test('AC1: duplicate dates collapse to a single tick', () => {
     const data = [
       datum({ closeDate: new Date(2026, 3, 5) }),
-      datum({ closeDate: new Date(2026, 3, 25) }),
+      datum({ closeDate: new Date(2026, 3, 5) }),
+      datum({ closeDate: new Date(2026, 3, 6) }),
+    ];
+    const { container } = renderXAxis(data);
+    expect(container.querySelectorAll('.tick')).toHaveLength(2);
+  });
+
+  test('AC1: tick labels formatted via date-fns "MMM d", one per date', () => {
+    const data = [
+      datum({ closeDate: new Date(2026, 3, 7) }),
+      datum({ closeDate: new Date(2026, 3, 5) }),
+      datum({ closeDate: new Date(2026, 3, 6) }),
     ];
     const { container } = renderXAxis(data);
     const labels = Array.from(container.querySelectorAll('.tick text'))
       .map((t) => t.textContent);
-    expect(labels).toEqual(['Apr 5', 'Apr 12', 'Apr 19', 'Apr 26']);
+    // sorted chronologically regardless of input order
+    expect(labels).toEqual(['Apr 5', 'Apr 6', 'Apr 7']);
   });
 
   test('ticks are positioned via xScale on the X axis', () => {
@@ -62,7 +71,7 @@ describe('XAxis (PRD §7.2 X axis)', () => {
     const xScale = buildXScale(data, PLOT_WIDTH);
     const { container } = render(
       <svg>
-        <XAxis xScale={xScale} plotHeight={PLOT_HEIGHT} />
+        <XAxis xScale={xScale} dates={distinctDates(data)} plotHeight={PLOT_HEIGHT} />
       </svg>,
     );
     const firstTick = container.querySelector('.tick');

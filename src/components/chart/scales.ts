@@ -38,6 +38,15 @@ export const buildXScale = (
   return scaleTime().domain(padded).range([0, width]);
 };
 
+export const distinctDates = (data: readonly ChartDatum[]): Date[] => {
+  const seen = data.reduce<Map<number, Date>>((acc, d) => {
+    const t = d.closeDate.getTime();
+    if (!acc.has(t)) acc.set(t, d.closeDate);
+    return acc;
+  }, new Map());
+  return [...seen.values()].sort((a, b) => a.getTime() - b.getTime());
+};
+
 export const buildYScale = (
   data: readonly ChartDatum[],
   height: number,
