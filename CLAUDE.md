@@ -14,40 +14,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Work Execution Policy
 
-**All implementation work MUST go through Ralph loops.**
+Work is driven by the global **`ortus` CLI** (https://github.com/who/ortus). Run `ortus grind .` to drain the `bd ready` queue — each iteration spawns a fresh `claude -p /goal` subprocess scoped to closing exactly one issue. See **AGENTS.md** for the full command surface.
 
-When asked to implement features, fix bugs, or make code changes:
-
-1. **Do NOT implement directly** - Instead, create beads issues with detailed descriptions
-2. **Create well-structured issues** - Use `bd create` with clear titles, descriptions, and acceptance criteria
-3. **Set up dependencies** - Use `bd dep add` to establish proper ordering
-4. **Defer to Ralph** - The `ralph.sh` loop will execute the actual work via ortus/prompts/ralph-prompt.md
-
-**Allowed without Ralph loop:**
-- Answering questions about the codebase
-- Reading/exploring files for research
-- Creating beads issues
-- Discussing architecture or approach
-
-**Requires Ralph loop:**
-- Writing or modifying code
-- Creating new files
-- Running tests or builds
-- Any implementation work
-
-This ensures all work is tracked, atomic, and follows the defined workflow.
-
-## Sandbox Model
-
-**Rule**: The OS sandbox and `--dangerously-skip-permissions` (DSP) are complementary layers; both are in force during Ralph runs.
-
-The OS sandbox (Seatbelt on macOS, bubblewrap on Linux/WSL2) enforces filesystem-write and network boundaries on subprocesses spawned by Claude Code — it is the actual containment surface. DSP only suppresses Claude's interactive permission prompts so an unattended Ralph loop can proceed; it does not reduce containment. Together: DSP keeps the loop unblocked while the OS sandbox keeps the blast radius bounded.
-
-Two tiers are supported:
-- **Tier 1** (default): native OS sandbox only. Lighter-weight; requires Seatbelt (built-in on macOS) or bubblewrap+socat (Linux/WSL2).
-- **Tier 2**: Docker outer + native inner (`./ortus/ralph.sh --docker`). Stronger isolation for hosts where the native sandbox is insufficient or unavailable.
-
-See `README.md` for OS prerequisites and install instructions.
+When asked to implement features, fix bugs, or make code changes, prefer filing well-structured beads issues (`bd create` with clear titles, descriptions, and acceptance criteria; `bd dep add` for ordering) so `ortus grind` can pick them up.
 
 ## Project Overview
 
@@ -161,10 +130,8 @@ bd stats             # Project statistics
 ## Important Files
 
 * **CLAUDE.md** - AI agent instructions (this file)
-* **AGENTS.md** - Session rules and landing-the-plane protocol
-* **ortus/prompts/** - All prompt files (ralph-prompt.md, interview-prompt.md, prd-prompt.md)
-* **ortus/ralph.sh** - Task implementation loop
-* **ortus/interview.sh** - Interactive feature interview with Claude
+* **AGENTS.md** - Session rules, orchestrator (`ortus grind`) command surface, and landing-the-plane protocol
+* **.ortusrc** - Per-project ortus config (prefix, project type)
 
 ## Pro Tips for AI Agents
 
@@ -174,7 +141,7 @@ bd stats             # Project statistics
 
 ## CodeGraph (optional)
 
-If you have [CodeGraph](https://github.com/colbymchenry/codegraph) installed, Ralph will use it automatically; if not, nothing changes. Not required — Ralph detects CodeGraph at runtime and falls back silently to grep/glob/Read when absent.
+If you have [CodeGraph](https://github.com/colbymchenry/codegraph) installed, `ortus grind` will use it automatically; if not, nothing changes. Not required — CodeGraph is detected at runtime and falls back silently to grep/glob/Read when absent.
 
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->

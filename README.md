@@ -2,9 +2,17 @@
 
 A new project
 
-## Ortus Automation
+## Development Workflow (ortus grind)
 
-This project was scaffolded with [Ortus](https://github.com/who/ortus), which provides AI-powered development workflows including PRD-to-issues decomposition and automated implementation loops. See the ortus/ directory for scripts and prompts.
+This project's work is chunked through the global [Ortus](https://github.com/who/ortus) CLI. Install the `ortus` binary, then run `ortus grind .` from the project root to drain the `bd ready` issue queue to zero:
+
+```bash
+ortus grind .            # drain bd ready to zero, one issue per iteration
+ortus grind . --tasks 1  # close exactly one issue, then stop
+ortus tail               # follow the most recent grind logs
+```
+
+Each iteration spawns a fresh `claude -p /goal` subprocess with a narrow per-task condition — close exactly one issue — and the outer loop trusts only observable `bd` state to decide success, orphan-claim recovery, and retry. Because `bd ready` *is* the queue, an issue must be in ready state (no open blockers) before it can be picked up. See [AGENTS.md](AGENTS.md) for the full command surface.
 
 ## Tech Stack
 
@@ -15,49 +23,22 @@ This project was scaffolded with [Ortus](https://github.com/who/ortus), which pr
 
 ## Requirements
 
-- **[beads](https://github.com/steveyegge/beads) v1.0.0+** — issue tracking. The v0.55.0 → v1.0.0 arc completed beads' migration to Dolt as the sole storage backend; earlier versions used pre-Dolt SQLite/noms/JSONL modes that the Ortus workflow no longer supports. This project runs beads in Dolt server mode (see `.beads/metadata.json`) so concurrent Ralph loops do not contend on an embedded flock.
-- **[dolt](https://docs.dolthub.com/introduction/installation)** — SQL server that backs beads. Must be on `PATH`; beads auto-starts the server on first invocation.
-- **[claude](https://github.com/anthropics/claude-code)** — Claude CLI for Ralph loops.
-- **[jq](https://jqlang.github.io/jq/)**, **[rg](https://github.com/BurntSushi/ripgrep)**, **[fd](https://github.com/sharkdp/fd)** — used by ortus scripts.
+- **[beads](https://github.com/steveyegge/beads) v1.0.0+** — issue tracking, backed by an embedded (in-process) Dolt engine (see `.beads/metadata.json`). The git-tracked `.beads/issues.jsonl` is the source of truth; run `bd bootstrap` to rebuild the Dolt store from it.
+- **[dolt](https://docs.dolthub.com/introduction/installation)** — the storage engine beads embeds. Must be on `PATH`.
+- **[claude](https://github.com/anthropics/claude-code)** — Claude CLI, invoked by `ortus grind` for each task.
+- **[jq](https://jqlang.github.io/jq/)**, **[rg](https://github.com/BurntSushi/ripgrep)**, **[fd](https://github.com/sharkdp/fd)** — used by the ortus CLI and bd.
 
-**Optional: [CodeGraph](https://github.com/colbymchenry/codegraph).** Ralph's investigation step runs faster when CodeGraph is installed in the project — it provides a pre-indexed semantic graph of the codebase, so step-4 (Investigate) can resolve symbols, callers, and call graphs in one MCP call instead of dozens of grep/glob/Read calls. **Not required.** Ralph detects CodeGraph at runtime: if `.codegraph/` exists and the MCP server is reachable, Ralph uses it; otherwise it falls back silently to the default search behavior. When CodeGraph is present, Ralph closure comments and PRD decomposition outputs also include CodeGraph-derived structural data (a parseable change record on closures; reference checks and likely-touched files on decompositions); when absent, both remain byte-equivalent to the pre-CodeGraph baseline.
+**Optional: [CodeGraph](https://github.com/colbymchenry/codegraph).** Code exploration runs faster when CodeGraph is installed — it provides a pre-indexed semantic graph of the codebase, so symbols, callers, and call graphs resolve in one MCP call instead of dozens of grep/glob/Read calls. **Not required.** CodeGraph is detected at runtime: if `.codegraph/` exists and the MCP server is reachable it is used; otherwise tooling falls back silently to the default search behavior.
 
-## Sandboxing prerequisites
+## Sandboxing
 
-Ralph runs Claude Code inside the OS sandbox so that bash subprocesses spawned during a loop are confined to filesystem-write and network boundaries. The native sandbox is the actual containment surface; `--dangerously-skip-permissions` only suppresses interactive prompts and does not reduce containment (see [CLAUDE.md](CLAUDE.md) "Sandbox Model" for the layered defense). Without the OS dependencies below, `ortus/ralph.sh` will fail-fast at smoke-test time rather than silently degrade to unsandboxed execution.
+`ortus grind` runs Claude Code inside the OS sandbox so that bash subprocesses spawned during a task are confined to filesystem-write and network boundaries. The native sandbox is the actual containment surface; `--dangerously-skip-permissions` only suppresses interactive prompts and does not reduce containment. Install the OS prerequisites below before running `ortus grind`:
 
 - **macOS**: Seatbelt is built into the OS — no install required.
 - **Linux / WSL2**: install bubblewrap and socat via `sudo apt-get install bubblewrap socat` (or your distro's equivalent).
 - **WSL1**: unsupported — the sandbox requires WSL2's Linux kernel.
 
-For stronger isolation on hosts where the native sandbox is insufficient, use Tier 2 (`./ortus/ralph.sh --docker`), which adds a Docker outer layer around the native inner sandbox.
-
-## Sandbox Tiers
-
-Ortus offers two sandboxing tiers. **Tier 1 (native sandbox only) is the default for solo interactive development.** **Tier 2 (`./ortus/ralph.sh --docker`) is opt-in for unattended runs** (overnight Ralph loops, CI, code review of unfamiliar code) where the broader blast radius of a misbehaving subprocess matters more than startup cost.
-
-| Dimension              | Tier 1 (native)                                                                | Tier 2 (`--docker`)                                                                       |
-| ---------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Isolation strength     | OS sandbox (Seatbelt on macOS, bubblewrap on Linux/WSL2) confines per-process. | Docker container as outer layer plus the native inner sandbox; container-level fs/net isolation from host. |
-| Host risk surface      | Subprocess runs on the host filesystem; containment is per-syscall.            | Subprocess runs inside a container; the host filesystem is bind-mounted at the project root only.        |
-| Startup cost           | None — direct `exec`.                                                          | Container start adds ~1–3s per loop, plus a one-time image pull on first run.             |
-| Docker required        | No.                                                                            | Yes — the `docker sandbox` CLI must be installed.                                         |
-| Recommended scenario   | Solo interactive development; fast iteration on trusted code.                  | Unattended overnight Ralph runs; CI; reviewing untrusted or unfamiliar code.              |
-
-### Tier 2 (`--docker`): bind-mount and first-run auth
-
-When you run `./ortus/ralph.sh --docker`, the script invokes `docker sandbox run claude --name ortus-ralph -- ...`, which bind-mounts the host's current working directory (your project root) into the container as the workspace. Edits made inside the container land on your host filesystem in real time — there is no copy step. Logs continue to land at the same host path as Tier 1 (`logs/ralph-<timestamp>.log` under your project root), so `ortus/tail.sh` and any existing log tooling work unchanged in both tiers.
-
-First-run authentication has two paths:
-
-- **Interactive OAuth** — on the very first `--docker` run, Claude Code prompts inside the container; complete the OAuth flow once and credentials persist (see volume note below).
-- **Pre-exported `ANTHROPIC_API_KEY`** — export the env var on the host before invoking `ralph.sh --docker`; it is forwarded into the container and skips the OAuth prompt entirely. Use this for unattended/CI runs.
-
-Credentials are cached across runs in the `docker-claude-sandbox-data` Docker volume (created automatically on first run), so subsequent `--docker` invocations do not re-prompt.
-
-### Tier 2 on Linux: `enableWeakerNestedSandbox`
-
-On Linux, running the native sandbox inside the Docker container means nesting bubblewrap inside another containment layer, and nested bubblewrap has reduced isolation guarantees — so `.claude/settings.json` sets `enableWeakerNestedSandbox: true` to let the inner sandbox start under these conditions. In Tier 2 the container is the primary security boundary, and the inner native sandbox runs as defense-in-depth on top of it. The security trade-off — weaker nested isolation in exchange for the layered containment Tier 2 provides — is acceptable in this configuration, because the container itself already enforces the strong fs/net boundary against the host.
+For stronger isolation on hosts where the native sandbox is insufficient, the ortus CLI supports an outer Docker layer around the native inner sandbox; see the [ortus](https://github.com/who/ortus) docs for details.
 
 ## Privacy verification
 

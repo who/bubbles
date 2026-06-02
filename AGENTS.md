@@ -12,6 +12,21 @@ bd close <id>         # Complete work
 bd dolt push          # Push beads to Dolt remote
 ```
 
+## Orchestrator (ortus grind)
+
+Work is chunked through the global [ortus](https://github.com/who/ortus) CLI. `ortus grind` drains the `bd ready` queue: each iteration spawns a fresh `claude -p /goal` subprocess with a narrow per-task condition (close exactly one issue). The outer loop trusts only observable bd state — not the subprocess's own judgment — to decide success, orphan-claim recovery, and retry.
+
+```bash
+ortus grind .                          # drain bd ready to zero
+ortus grind . --tasks 1                # stop after exactly one task is closed
+ortus grind . --orphan-policy revert   # revert claimed-but-unclosed issues to open
+ortus grind . --idle-sleep 0           # no idle backoff on no-change iterations
+ortus grind . -c "<custom condition>"  # custom per-iteration /goal text
+ortus tail                             # follow the most recent grind logs
+```
+
+Because `bd ready` *is* the queue, an issue must be in ready state (no open blockers) to be picked up.
+
 ## Session Completion
 
 **When ending a work session**, you MUST complete ALL steps below. When a remote is configured, work is NOT complete until `git push` succeeds.
