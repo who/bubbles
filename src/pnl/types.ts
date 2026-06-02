@@ -21,18 +21,6 @@ export type ClosedContract = {
   tradeCount: number;
 };
 
-export type ClosedTicker = {
-  instrument: string;
-  pl: number;
-  pctReturn: number;
-  closedQty: number;
-  costBasis: number;
-  grossVolume: number;
-  contracts: number;
-  closeDate: Date;
-  openDate: Date;
-};
-
 export type Summary = {
   totalPl: number;
   totalGain: number;

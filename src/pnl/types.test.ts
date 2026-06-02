@@ -1,6 +1,6 @@
 import { expectTypeOf, test } from 'vitest';
 import type {
-  RawTrade, ClosedContract, ClosedTicker, Summary,
+  RawTrade, ClosedContract, Summary,
 } from './types';
 
 test('RawTrade sample literal compiles', () => {
@@ -37,21 +37,6 @@ test('ClosedContract sample literal compiles', () => {
     tradeCount: 2,
   };
   expectTypeOf(sample).toEqualTypeOf<ClosedContract>();
-});
-
-test('ClosedTicker sample literal compiles', () => {
-  const sample: ClosedTicker = {
-    instrument: 'INTC',
-    pl: 500,
-    pctReturn: 50,
-    closedQty: 10,
-    costBasis: 1000,
-    grossVolume: 2500,
-    contracts: 2,
-    closeDate: new Date('2026-04-25'),
-    openDate: new Date('2026-04-10'),
-  };
-  expectTypeOf(sample).toEqualTypeOf<ClosedTicker>();
 });
 
 test('Summary sample literal compiles with glRatio number and null', () => {

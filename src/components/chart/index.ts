@@ -27,7 +27,6 @@ export {
 export type {
   ContractTooltipDatum,
   HoverTooltipProps,
-  TickerTooltipDatum,
   TooltipDatum,
 } from './HoverTooltip.tsx';
 export { buildRScale, buildXScale, buildYScale } from './scales.ts';

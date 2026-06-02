@@ -159,8 +159,8 @@ test('bubbles-702.3: failed sample fetch surfaces an error banner', async () => 
   }
 });
 
-test('bubbles-xad.5: ViewToggle flips BubbleChart between contract and ticker datasets', async () => {
-  // Two contracts on the same instrument → 2 contract bubbles, 1 ticker bubble.
+test('only the By Contract chart renders — no view toggle is present', async () => {
+  // Two contracts on the same instrument → 2 contract bubbles.
   const TWO_CONTRACT_CSV = [
     HEADER,
     '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($100.00)',
@@ -175,38 +175,16 @@ test('bubbles-xad.5: ViewToggle flips BubbleChart between contract and ticker da
 
   await screen.findByRole('region', { name: /total realized p\/l/i });
 
-  // Default view is "contract" → 2 bubbles
-  let chart = container.querySelector('.bubble-chart') as HTMLElement;
+  // Always the contract view → 2 bubbles, no radiogroup
+  const chart = container.querySelector('.bubble-chart') as HTMLElement;
   expect(chart).not.toBeNull();
   expect(chart.dataset.groupingMode).toBe('contract');
   expect(chart.querySelectorAll('circle')).toHaveLength(2);
-
-  // ViewToggle counts reflect both datasets
-  const tickerBtn = screen.getByRole('radio', { name: /By Ticker · 1/i });
-  const contractBtn = screen.getByRole('radio', { name: /By Contract · 2/i });
-  expect(contractBtn.getAttribute('aria-checked')).toBe('true');
-  expect(tickerBtn.getAttribute('aria-checked')).toBe('false');
-
-  // Flip to ticker → 1 bubble, mode flag flipped
-  fireEvent.click(tickerBtn);
-  chart = container.querySelector('.bubble-chart') as HTMLElement;
-  expect(chart.dataset.groupingMode).toBe('ticker');
-  expect(chart.querySelectorAll('circle')).toHaveLength(1);
-  expect(chart.querySelectorAll('circle[data-bubble-id^="ticker|"]')).toHaveLength(1);
-
-  // Hover the ticker bubble → tooltip shows ticker fields (instrument + N contracts)
-  const tickerCircle = chart.querySelector('circle') as Element;
-  fireEvent.mouseEnter(tickerCircle);
-  const tip = container.querySelector('.hover-tooltip') as HTMLElement;
-  expect(tip).not.toBeNull();
-  expect(tip).toHaveTextContent('SPY');
-  expect(tip).toHaveTextContent('2 contracts');
-
-  // Flip back to contract → 2 bubbles again, contract ids
-  fireEvent.click(screen.getByRole('radio', { name: /By Contract · 2/i }));
-  chart = container.querySelector('.bubble-chart') as HTMLElement;
-  expect(chart.dataset.groupingMode).toBe('contract');
   expect(chart.querySelectorAll('circle[data-bubble-id^="contract|"]')).toHaveLength(2);
+
+  expect(screen.queryByRole('radiogroup')).toBeNull();
+  expect(screen.queryByRole('radio', { name: /By Ticker/i })).toBeNull();
+  expect(screen.queryByRole('radio', { name: /By Contract/i })).toBeNull();
 });
 
 test('bubbles-cxs.6: 1 malformed row renders chip "1 row was skipped." with expandable details', async () => {

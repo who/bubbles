@@ -3,17 +3,14 @@ import {
   FileDropzone,
   StatsStrip,
   ThemeToggle,
-  ViewToggle,
 } from './components/index.ts';
-import type { ViewMode } from './components/index.ts';
 import { BubbleChart } from './components/chart/index.ts';
 import { parseCsv } from './parsing/index.ts';
 import {
   computeClosedContracts,
-  computeClosedTickers,
   computeSummary,
 } from './pnl/index.ts';
-import type { ClosedContract, ClosedTicker, Summary } from './pnl/index.ts';
+import type { ClosedContract, Summary } from './pnl/index.ts';
 import './App.css';
 
 type Status = 'empty' | 'parsing' | 'results' | 'error';
@@ -37,8 +34,6 @@ function App() {
   const [status, setStatus] = useState<Status>('empty');
   const [summary, setSummary] = useState<Summary | null>(null);
   const [contracts, setContracts] = useState<ClosedContract[]>([]);
-  const [tickers, setTickers] = useState<ClosedTicker[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>('contract');
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -63,8 +58,6 @@ function App() {
     setError(null);
     setSummary(null);
     setContracts([]);
-    setTickers([]);
-    setViewMode('contract');
     setWarnings([]);
     setFileName(file.name);
     setRowsParsed(0);
@@ -80,10 +73,8 @@ function App() {
         },
       });
       const closedContracts = computeClosedContracts(trades);
-      const closedTickers = computeClosedTickers(closedContracts);
       const computed = computeSummary(closedContracts, parseWarnings);
       setContracts(closedContracts);
-      setTickers(closedTickers);
       setSummary(computed);
       setWarnings(parseWarnings);
       setStatus('results');
@@ -92,7 +83,6 @@ function App() {
       setError(message);
       setSummary(null);
       setContracts([]);
-      setTickers([]);
       setWarnings([]);
       setStatus('error');
     }
@@ -124,8 +114,6 @@ function App() {
     setStatus('empty');
     setSummary(null);
     setContracts([]);
-    setTickers([]);
-    setViewMode('contract');
     setWarnings([]);
     setError(null);
     setFileName(null);
@@ -195,17 +183,8 @@ function App() {
                 .
               </p>
             </header>
-            <ViewToggle
-              value={viewMode}
-              onChange={setViewMode}
-              counts={{ contract: contracts.length, ticker: tickers.length }}
-            />
             <div className="app__chart-slot">
-              {viewMode === 'contract' ? (
-                <BubbleChart data={contracts} groupingMode="contract" />
-              ) : (
-                <BubbleChart data={tickers} groupingMode="ticker" />
-              )}
+              <BubbleChart data={contracts} />
             </div>
           </section>
           {warnings.length > 0 ? (

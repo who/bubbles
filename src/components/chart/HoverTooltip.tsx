@@ -24,18 +24,7 @@ export type ContractTooltipDatum = {
   readonly tradeCount: number;
 };
 
-export type TickerTooltipDatum = {
-  readonly view: 'ticker';
-  readonly name: string;
-  readonly closeDate: Date;
-  readonly pl: number;
-  readonly pctReturn: number;
-  readonly costBasis: number;
-  readonly closedQty: number;
-  readonly contracts: number;
-};
-
-export type TooltipDatum = ContractTooltipDatum | TickerTooltipDatum;
+export type TooltipDatum = ContractTooltipDatum;
 
 export interface HoverTooltipProps {
   datum: TooltipDatum | null;
@@ -63,9 +52,7 @@ function HoverTooltip({ datum, anchorX, anchorY, containerWidth }: HoverTooltipP
     : anchorX + TOOLTIP_OFFSET_X;
   const top = anchorY - TOOLTIP_OFFSET_Y;
 
-  const trailingLabel = datum.view === 'contract'
-    ? `${datum.tradeCount} ${datum.tradeCount === 1 ? 'trade fill' : 'trade fills'}`
-    : `${datum.contracts} ${datum.contracts === 1 ? 'contract' : 'contracts'}`;
+  const trailingLabel = `${datum.tradeCount} ${datum.tradeCount === 1 ? 'trade fill' : 'trade fills'}`;
 
   return (
     <div

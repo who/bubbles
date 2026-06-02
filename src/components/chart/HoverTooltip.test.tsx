@@ -6,7 +6,6 @@ import HoverTooltip, {
   TOOLTIP_OFFSET_Y,
   TOOLTIP_WIDTH,
   type ContractTooltipDatum,
-  type TickerTooltipDatum,
   type TooltipDatum,
 } from './HoverTooltip.tsx';
 
@@ -30,17 +29,6 @@ const contractLoss: ContractTooltipDatum = {
   costBasis: 1766.00,
   closedQty: 3,
   tradeCount: 1,
-};
-
-const tickerGain: TickerTooltipDatum = {
-  view: 'ticker',
-  name: 'PLTR',
-  closeDate: new Date(2026, 4, 4),
-  pl: 1245.50,
-  pctReturn: 29.29,
-  costBasis: 4252.00,
-  closedQty: 50,
-  contracts: 4,
 };
 
 const renderTooltip = (props: {
@@ -111,24 +99,6 @@ describe('HoverTooltip (PRD §7.2 + §7.3)', () => {
     const single: ContractTooltipDatum = { ...contractGain, tradeCount: 1 };
     const { container } = renderTooltip({ datum: single });
     expect(getTooltip(container)).toHaveTextContent('1 trade fill');
-  });
-
-  test('AC3: ticker view renders all required fields plus contract count', () => {
-    const { container } = renderTooltip({ datum: tickerGain });
-    const tip = getTooltip(container);
-    expect(tip).toHaveTextContent('PLTR');
-    expect(tip).toHaveTextContent('May 4, 2026');
-    expect(tip).toHaveTextContent('+$1,245.50');
-    expect(tip).toHaveTextContent('+29.3%');
-    expect(tip).toHaveTextContent('$4,252.00');
-    expect(tip).toHaveTextContent('50');
-    expect(tip).toHaveTextContent('4 contracts');
-  });
-
-  test('AC3: ticker view singular-grams "1 contract" when contracts===1', () => {
-    const single: TickerTooltipDatum = { ...tickerGain, contracts: 1 };
-    const { container } = renderTooltip({ datum: single });
-    expect(getTooltip(container)).toHaveTextContent('1 contract');
   });
 
   test('AC3: signed P/L for losses shows negative without leading +', () => {

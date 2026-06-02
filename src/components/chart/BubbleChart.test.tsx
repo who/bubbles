@@ -1,6 +1,6 @@
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
-import type { ClosedContract, ClosedTicker } from '../../pnl/index.ts';
+import type { ClosedContract } from '../../pnl/index.ts';
 import BubbleChart from './BubbleChart.tsx';
 
 const mkContract = (overrides: Partial<ClosedContract> = {}): ClosedContract => ({
@@ -18,19 +18,6 @@ const mkContract = (overrides: Partial<ClosedContract> = {}): ClosedContract => 
   ...overrides,
 });
 
-const mkTicker = (overrides: Partial<ClosedTicker> = {}): ClosedTicker => ({
-  instrument: 'AAPL',
-  pl: 1000,
-  pctReturn: 75,
-  closedQty: 25,
-  costBasis: 1333,
-  grossVolume: 2333,
-  contracts: 4,
-  closeDate: new Date(2026, 4, 8),
-  openDate: new Date(2026, 4, 1),
-  ...overrides,
-});
-
 const findCircle = (container: HTMLElement, idPrefix: string): Element => {
   const el = container.querySelector(`circle[data-bubble-id^="${idPrefix}"]`);
   if (!el) throw new Error(`circle starting with "${idPrefix}" not found`);
@@ -41,8 +28,8 @@ const getTooltip = (container: HTMLElement): HTMLElement | null => (
   container.querySelector('.hover-tooltip') as HTMLElement | null
 );
 
-describe('BubbleChart (bubbles-xad.5 grouping views)', () => {
-  test('AC1: groupingMode=contract → tooltip shows description + trade-fill count', () => {
+describe('BubbleChart (contract grouping view)', () => {
+  test('AC1: tooltip shows description + trade-fill count', () => {
     const data: ClosedContract[] = [
       mkContract({
         description: 'AAPL 5/8/2026 Call $190.00',
@@ -54,7 +41,7 @@ describe('BubbleChart (bubbles-xad.5 grouping views)', () => {
       }),
     ];
     const { container } = render(
-      <BubbleChart data={data} groupingMode="contract" />,
+      <BubbleChart data={data} />,
     );
 
     expect(getTooltip(container)).toBeNull();
@@ -73,105 +60,59 @@ describe('BubbleChart (bubbles-xad.5 grouping views)', () => {
     expect(getTooltip(container)).toBeNull();
   });
 
-  test('AC1: groupingMode=contract — singular "1 trade fill" when tradeCount===1', () => {
+  test('AC1: singular "1 trade fill" when tradeCount===1', () => {
     const data: ClosedContract[] = [mkContract({ tradeCount: 1 })];
     const { container } = render(
-      <BubbleChart data={data} groupingMode="contract" />,
+      <BubbleChart data={data} />,
     );
     fireEvent.mouseEnter(findCircle(container, 'contract|'));
     expect(getTooltip(container)).toHaveTextContent('1 trade fill');
   });
 
-  test('AC2: groupingMode=ticker → tooltip shows instrument + contract count', () => {
-    const data: ClosedTicker[] = [
-      mkTicker({
-        instrument: 'PLTR',
-        pl: 1245.50,
-        pctReturn: 29.29,
-        costBasis: 4252.00,
-        closedQty: 50,
-        contracts: 4,
-      }),
-    ];
-    const { container } = render(
-      <BubbleChart data={data} groupingMode="ticker" />,
-    );
-    fireEvent.mouseEnter(findCircle(container, 'ticker|'));
-
-    const tip = getTooltip(container);
-    expect(tip).not.toBeNull();
-    expect(tip).toHaveTextContent('PLTR');
-    expect(tip).toHaveTextContent('4 contracts');
-    expect(tip).toHaveTextContent('+$1,245.50');
-    expect(tip).toHaveTextContent('+29.3%');
-  });
-
-  test('AC2: groupingMode=ticker — singular "1 contract" when contracts===1', () => {
-    const data: ClosedTicker[] = [mkTicker({ contracts: 1 })];
-    const { container } = render(
-      <BubbleChart data={data} groupingMode="ticker" />,
-    );
-    fireEvent.mouseEnter(findCircle(container, 'ticker|'));
-    expect(getTooltip(container)).toHaveTextContent('1 contract');
-  });
-
   test('AC3: re-rendering with a different dataset rebuilds scales and bubbles', () => {
     const oneContract: ClosedContract[] = [mkContract({ pl: 100, pctReturn: 50 })];
-    const fiveTickers: ClosedTicker[] = [
-      mkTicker({ instrument: 'A', pctReturn: -100 }),
-      mkTicker({ instrument: 'B', pctReturn: 200 }),
-      mkTicker({ instrument: 'C', pctReturn: 50 }),
-      mkTicker({ instrument: 'D', pctReturn: -25 }),
-      mkTicker({ instrument: 'E', pctReturn: 600 }),
+    const fiveContracts: ClosedContract[] = [
+      mkContract({ description: 'A', pctReturn: -100, closeDate: new Date(2026, 3, 1) }),
+      mkContract({ description: 'B', pctReturn: 200, closeDate: new Date(2026, 3, 5) }),
+      mkContract({ description: 'C', pctReturn: 50, closeDate: new Date(2026, 3, 9) }),
+      mkContract({ description: 'D', pctReturn: -25, closeDate: new Date(2026, 3, 13) }),
+      mkContract({ description: 'E', pctReturn: 600, closeDate: new Date(2026, 3, 17) }),
     ];
 
     const { container, rerender } = render(
-      <BubbleChart data={oneContract} groupingMode="contract" />,
+      <BubbleChart data={oneContract} />,
     );
     expect(container.querySelectorAll('circle')).toHaveLength(1);
     const initialChart = container.querySelector('.bubble-chart') as HTMLElement;
     expect(initialChart.dataset.groupingMode).toBe('contract');
     expect(initialChart.dataset.bubbleCount).toBe('1');
 
-    rerender(<BubbleChart data={fiveTickers} groupingMode="ticker" />);
+    rerender(<BubbleChart data={fiveContracts} />);
 
     expect(container.querySelectorAll('circle')).toHaveLength(5);
     const updatedChart = container.querySelector('.bubble-chart') as HTMLElement;
-    expect(updatedChart.dataset.groupingMode).toBe('ticker');
     expect(updatedChart.dataset.bubbleCount).toBe('5');
 
-    // All five new bubbles use ticker ids — none of the contract id remains
     const contractCircles = container.querySelectorAll('circle[data-bubble-id^="contract|"]');
-    const tickerCircles = container.querySelectorAll('circle[data-bubble-id^="ticker|"]');
-    expect(contractCircles).toHaveLength(0);
-    expect(tickerCircles).toHaveLength(5);
+    expect(contractCircles).toHaveLength(5);
   });
 
-  test('AC4: bubble count matches active dataset length (contract & ticker modes)', () => {
+  test('AC4: bubble count matches dataset length', () => {
     const contracts: ClosedContract[] = [
       mkContract({ description: 'A', closeDate: new Date(2026, 3, 1) }),
       mkContract({ description: 'B', closeDate: new Date(2026, 3, 5) }),
       mkContract({ description: 'C', closeDate: new Date(2026, 3, 9) }),
     ];
-    const tickers: ClosedTicker[] = [
-      mkTicker({ instrument: 'AAA' }),
-      mkTicker({ instrument: 'BBB' }),
-    ];
 
     const { container } = render(
-      <BubbleChart data={contracts} groupingMode="contract" />,
+      <BubbleChart data={contracts} />,
     );
     expect(container.querySelectorAll('circle')).toHaveLength(3);
-
-    const { container: c2 } = render(
-      <BubbleChart data={tickers} groupingMode="ticker" />,
-    );
-    expect(c2.querySelectorAll('circle')).toHaveLength(2);
   });
 
   test('AC4: empty dataset renders zero bubbles and no tooltip', () => {
     const { container } = render(
-      <BubbleChart data={[]} groupingMode="contract" />,
+      <BubbleChart data={[]} />,
     );
     expect(container.querySelectorAll('circle')).toHaveLength(0);
     expect(getTooltip(container)).toBeNull();
@@ -193,7 +134,7 @@ describe('BubbleChart (bubbles-xad.5 grouping views)', () => {
       }),
     ];
     const { container } = render(
-      <BubbleChart data={data} groupingMode="contract" />,
+      <BubbleChart data={data} />,
     );
 
     const xAxis = container.querySelector('.bubble-chart__x-axis');
@@ -227,7 +168,7 @@ describe('BubbleChart (bubbles-xad.5 grouping views)', () => {
       }),
     ];
     const { container } = render(
-      <BubbleChart data={data} groupingMode="contract" />,
+      <BubbleChart data={data} />,
     );
     const circles = container.querySelectorAll('circle');
     expect(circles).toHaveLength(2);
@@ -244,9 +185,9 @@ describe('BubbleChart (bubbles-xad.5 grouping views)', () => {
 });
 
 describe('BubbleChart empty result state (bubbles-xad.6)', () => {
-  test('AC1: contract mode with empty data shows §7.3 friendly message centered in chart card', () => {
+  test('AC1: empty data shows §7.3 friendly message centered in chart card', () => {
     const { container } = render(
-      <BubbleChart data={[]} groupingMode="contract" />,
+      <BubbleChart data={[]} />,
     );
 
     const wrapper = container.querySelector('.bubble-chart');
@@ -262,24 +203,9 @@ describe('BubbleChart empty result state (bubbles-xad.6)', () => {
     );
   });
 
-  test('AC1: ticker mode with empty data shows the same §7.3 friendly message', () => {
-    const { container } = render(
-      <BubbleChart data={[]} groupingMode="ticker" />,
-    );
-
-    const message = container.querySelector('.bubble-chart__empty-message');
-    expect(message).not.toBeNull();
-    expect(message).toHaveTextContent(
-      'This file has no matched closes. All positions appear to still be open.',
-    );
-    expect(
-      (container.querySelector('.bubble-chart') as HTMLElement).dataset.groupingMode,
-    ).toBe('ticker');
-  });
-
   test('AC2: empty state does not render axes or any svg', () => {
     const { container } = render(
-      <BubbleChart data={[]} groupingMode="contract" />,
+      <BubbleChart data={[]} />,
     );
 
     expect(container.querySelector('svg')).toBeNull();
