@@ -1,7 +1,7 @@
 {
   "database": "dolt",
   "backend": "dolt",
-  "dolt_mode": "server",
+  "dolt_mode": "embedded",
   "dolt_database": "bubbles",
   "project_id": "b0dd536c-fdc0-4122-9263-664b3004bbdb"
 }

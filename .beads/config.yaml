@@ -37,4 +37,7 @@
 # Git branch for beads commits (bd dolt push will commit to this branch)
 # sync-branch: "beads-sync"
 
-dolt.auto-start: true
+# Embedded Dolt engine (in-process, no external sql-server). The legacy
+# server mode is recorded in metadata.json as dolt_mode; auto-start is a
+# server-only setting and is left off for embedded mode.
+dolt.auto-start: false
