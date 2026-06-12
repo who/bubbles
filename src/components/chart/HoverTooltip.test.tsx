@@ -1,5 +1,12 @@
 import { render } from '@testing-library/react';
-import { describe, expect, test } from 'vitest';
+import {
+  afterEach, beforeEach, describe, expect, test, vi,
+} from 'vitest';
+import { MASKED_AMOUNT } from '../format.ts';
+import {
+  PRIVACY_MODE_STORAGE_KEY,
+  PrivacyModeProvider,
+} from '../usePrivacyMode.tsx';
 import HoverTooltip, {
   EDGE_THRESHOLD,
   TOOLTIP_OFFSET_X,
@@ -154,5 +161,64 @@ describe('HoverTooltip (PRD §7.2 + §7.3)', () => {
   test('renders nothing when datum is null', () => {
     const { container } = renderTooltip({ datum: null });
     expect(container.querySelector('.hover-tooltip')).toBeNull();
+  });
+});
+
+describe('HoverTooltip privacy mode (bubbles-1c2)', () => {
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        store.set(k, String(v));
+      },
+      removeItem: (k: string) => {
+        store.delete(k);
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const renderPrivate = (datum: TooltipDatum) => render(
+    <PrivacyModeProvider>
+      <HoverTooltip
+        datum={datum}
+        anchorX={400}
+        anchorY={300}
+        containerWidth={800}
+      />
+    </PrivacyModeProvider>,
+  );
+
+  test('privacy mode ON: P/L and cost basis are masked, % return and qty remain', () => {
+    window.localStorage.setItem(PRIVACY_MODE_STORAGE_KEY, 'true');
+    const { container } = renderPrivate(contractGain);
+    const tip = getTooltip(container);
+    expect(tip).not.toHaveTextContent('+$374.20');
+    expect(tip).not.toHaveTextContent('$1,725.20');
+    expect(tip.querySelectorAll('dd')[0]).toHaveTextContent(MASKED_AMOUNT);
+    expect(tip.querySelectorAll('dd')[2]).toHaveTextContent(MASKED_AMOUNT);
+    expect(tip).toHaveTextContent('+21.7%');
+    expect(tip).toHaveTextContent('5');
+    expect(tip).toHaveTextContent('2 trade fills');
+  });
+
+  test('privacy mode ON: loss tooltip still gets loss border color (sizes/colors unaffected)', () => {
+    window.localStorage.setItem(PRIVACY_MODE_STORAGE_KEY, 'true');
+    const { container } = renderPrivate(contractLoss);
+    const tip = getTooltip(container);
+    expect(tip.style.borderTopColor).toBe('rgb(198, 40, 40)');
+    expect(tip).not.toHaveTextContent('-$800.50');
+    expect(tip).toHaveTextContent('-45.3%');
+  });
+
+  test('privacy mode OFF: dollar amounts render normally', () => {
+    const { container } = renderPrivate(contractGain);
+    const tip = getTooltip(container);
+    expect(tip).toHaveTextContent('+$374.20');
+    expect(tip).toHaveTextContent('$1,725.20');
   });
 });

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   FileDropzone,
+  PrivacyModeProvider,
+  PrivacyToggle,
   StatsStrip,
   ThemeToggle,
 } from './components/index.ts';
@@ -129,91 +131,96 @@ function App() {
     : 0;
 
   return (
-    <main className="app">
-      <header className="app__header">
-        <h1>PnL Bubbles</h1>
-        <ThemeToggle />
-      </header>
-      {error ? (
-        <p className="app__error" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {showDropzone ? (
-        <FileDropzone
-          onFile={handleFile}
-          onError={handleError}
-          onUseSample={handleUseSample}
-        />
-      ) : null}
-      {status === 'parsing' && fileName ? (
-        <div className="app__processing" role="status" aria-live="polite">
-          <p className="app__status">
-            Parsing
-            {' '}
-            {ROW_COUNT_FORMATTER.format(rowsParsed)}
-            {' '}
-            {rowsParsed === 1 ? 'row' : 'rows'}
-            …
+    <PrivacyModeProvider>
+      <main className="app">
+        <header className="app__header">
+          <h1>PnL Bubbles</h1>
+          <div className="app__header-actions">
+            <PrivacyToggle />
+            <ThemeToggle />
+          </div>
+        </header>
+        {error ? (
+          <p className="app__error" role="alert">
+            {error}
           </p>
-          {showProgressBar ? (
-            <progress
-              className="app__progress"
-              value={progressPercent}
-              max={100}
-              aria-label="Parse progress"
-            />
-          ) : null}
-        </div>
-      ) : null}
-      {showResults ? (
-        <>
-          <StatsStrip summary={summary} />
-          <section className="app__chart-card" aria-labelledby="app__chart-title">
-            <header className="app__chart-header">
-              <h2 id="app__chart-title" className="app__chart-title">
-                Realized Gain/Loss Details
-              </h2>
-              <p className="app__chart-subtitle">
-                Chart based on
-                {' '}
-                {summary.totalClosed}
-                {' '}
-                {summary.totalClosed === 1 ? 'record' : 'records'}
-                .
-              </p>
-            </header>
-            <div className="app__chart-slot">
-              <BubbleChart data={contracts} />
-            </div>
-          </section>
-          {warnings.length > 0 ? (
-            <details className="app__warnings">
-              <summary className="app__warnings__chip">
-                {(() => {
-                  const skipped = totalSkippedRows(warnings) || warnings.length;
-                  const noun = skipped === 1 ? 'row was' : 'rows were';
-                  return `${skipped} ${noun} skipped.`;
-                })()}
-              </summary>
-              <ul className="app__warnings__list">
-                {warnings.map((w) => (
-                  <li key={w}>{w}</li>
-                ))}
-              </ul>
-            </details>
-          ) : null}
-          <p className="app__methodology">{METHODOLOGY_TEXT}</p>
-          <button
-            type="button"
-            className="app__upload-another"
-            onClick={handleReset}
-          >
-            Upload another
-          </button>
-        </>
-      ) : null}
-    </main>
+        ) : null}
+        {showDropzone ? (
+          <FileDropzone
+            onFile={handleFile}
+            onError={handleError}
+            onUseSample={handleUseSample}
+          />
+        ) : null}
+        {status === 'parsing' && fileName ? (
+          <div className="app__processing" role="status" aria-live="polite">
+            <p className="app__status">
+              Parsing
+              {' '}
+              {ROW_COUNT_FORMATTER.format(rowsParsed)}
+              {' '}
+              {rowsParsed === 1 ? 'row' : 'rows'}
+              …
+            </p>
+            {showProgressBar ? (
+              <progress
+                className="app__progress"
+                value={progressPercent}
+                max={100}
+                aria-label="Parse progress"
+              />
+            ) : null}
+          </div>
+        ) : null}
+        {showResults ? (
+          <>
+            <StatsStrip summary={summary} />
+            <section className="app__chart-card" aria-labelledby="app__chart-title">
+              <header className="app__chart-header">
+                <h2 id="app__chart-title" className="app__chart-title">
+                  Realized Gain/Loss Details
+                </h2>
+                <p className="app__chart-subtitle">
+                  Chart based on
+                  {' '}
+                  {summary.totalClosed}
+                  {' '}
+                  {summary.totalClosed === 1 ? 'record' : 'records'}
+                  .
+                </p>
+              </header>
+              <div className="app__chart-slot">
+                <BubbleChart data={contracts} />
+              </div>
+            </section>
+            {warnings.length > 0 ? (
+              <details className="app__warnings">
+                <summary className="app__warnings__chip">
+                  {(() => {
+                    const skipped = totalSkippedRows(warnings) || warnings.length;
+                    const noun = skipped === 1 ? 'row was' : 'rows were';
+                    return `${skipped} ${noun} skipped.`;
+                  })()}
+                </summary>
+                <ul className="app__warnings__list">
+                  {warnings.map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+            <p className="app__methodology">{METHODOLOGY_TEXT}</p>
+            <button
+              type="button"
+              className="app__upload-another"
+              onClick={handleReset}
+            >
+              Upload another
+            </button>
+          </>
+        ) : null}
+      </main>
+    </PrivacyModeProvider>
   );
 }
 

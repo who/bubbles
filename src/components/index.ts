@@ -7,3 +7,10 @@ export type { ErrorBannerProps } from './ErrorBanner.tsx';
 export { default as ThemeToggle } from './ThemeToggle.tsx';
 export { useTheme, THEME_STORAGE_KEY } from './useTheme.ts';
 export type { Theme } from './useTheme.ts';
+export { default as PrivacyToggle } from './PrivacyToggle.tsx';
+export {
+  PrivacyModeProvider,
+  usePrivacyMode,
+  PRIVACY_MODE_STORAGE_KEY,
+} from './usePrivacyMode.tsx';
+export type { PrivacyModeValue } from './usePrivacyMode.tsx';

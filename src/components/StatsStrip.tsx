@@ -8,6 +8,7 @@ import {
   formatSignedCurrency,
   formatSignedPercent,
 } from './format.ts';
+import { usePrivacyMode } from './usePrivacyMode.tsx';
 import './StatsStrip.css';
 
 export interface StatsStripProps {
@@ -20,10 +21,10 @@ interface Tile {
   sub: string;
 }
 
-const buildTiles = (summary: Summary): Tile[] => {
+const buildTiles = (summary: Summary, masked: boolean): Tile[] => {
   const empty = summary.totalClosed === 0;
 
-  const gainSubText = `${formatCompactCurrency(summary.totalGain)} ÷ ${formatCompactCurrency(summary.totalLoss)}`;
+  const gainSubText = `${formatCompactCurrency(summary.totalGain, masked)} ÷ ${formatCompactCurrency(summary.totalLoss, masked)}`;
   const winSubText = `${summary.winnersCount} W · ${summary.losersCount} L`;
   const closedSubText = `${summary.totalClosed} closed positions`;
   const rrSubText = `Reward:risk ${formatRewardRisk(summary.avgWin, summary.avgLoss)}`;
@@ -47,7 +48,7 @@ const buildTiles = (summary: Summary): Tile[] => {
     },
     {
       label: 'Total Realized P/L',
-      primary: formatSignedCurrency(summary.totalPl),
+      primary: formatSignedCurrency(summary.totalPl, masked),
       sub: closedSubText,
     },
     {
@@ -57,7 +58,7 @@ const buildTiles = (summary: Summary): Tile[] => {
     },
     {
       label: 'Avg Win / Avg Loss',
-      primary: `${formatCompactCurrency(summary.avgWin)} / ${formatCompactCurrency(summary.avgLoss)}`,
+      primary: `${formatCompactCurrency(summary.avgWin, masked)} / ${formatCompactCurrency(summary.avgLoss, masked)}`,
       sub: rrSubText,
     },
     {
@@ -69,7 +70,8 @@ const buildTiles = (summary: Summary): Tile[] => {
 };
 
 function StatsStrip({ summary }: StatsStripProps) {
-  const tiles = buildTiles(summary);
+  const { privacyMode } = usePrivacyMode();
+  const tiles = buildTiles(summary, privacyMode);
 
   return (
     <div className="stats-strip">

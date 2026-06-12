@@ -1,6 +1,13 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, test } from 'vitest';
+import {
+  afterEach, beforeEach, describe, expect, test, vi,
+} from 'vitest';
 import StatsStrip from './StatsStrip.tsx';
+import { MASKED_AMOUNT } from './format.ts';
+import {
+  PRIVACY_MODE_STORAGE_KEY,
+  PrivacyModeProvider,
+} from './usePrivacyMode.tsx';
 import type { Summary } from '../pnl/types.ts';
 
 const baseSummary: Summary = {
@@ -133,5 +140,66 @@ describe('StatsStrip', () => {
     const tile = screen.getByRole('region', { name: 'Gain/Loss Ratio' });
     expect(within(tile).getByText('—')).toBeInTheDocument();
     expect(within(tile).getByText('$1K ÷ $0')).toBeInTheDocument();
+  });
+});
+
+describe('StatsStrip privacy mode (bubbles-1c2)', () => {
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        store.set(k, String(v));
+      },
+      removeItem: (k: string) => {
+        store.delete(k);
+      },
+    });
+    window.localStorage.setItem(PRIVACY_MODE_STORAGE_KEY, 'true');
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const renderPrivate = (summary: Summary) => render(
+    <PrivacyModeProvider>
+      <StatsStrip summary={summary} />
+    </PrivacyModeProvider>,
+  );
+
+  test('privacy mode ON: no dollar amounts anywhere in the strip', () => {
+    const { container } = renderPrivate(baseSummary);
+    const strip = container.querySelector('.stats-strip');
+    expect(strip?.textContent).not.toContain('$');
+  });
+
+  test('privacy mode ON: currency values are masked', () => {
+    renderPrivate(baseSummary);
+    const plTile = screen.getByRole('region', { name: 'Total Realized P/L' });
+    expect(within(plTile).getByText(MASKED_AMOUNT)).toBeInTheDocument();
+    const ratioTile = screen.getByRole('region', { name: 'Gain/Loss Ratio' });
+    expect(within(ratioTile).getByText(`${MASKED_AMOUNT} ÷ ${MASKED_AMOUNT}`)).toBeInTheDocument();
+    const avgTile = screen.getByRole('region', { name: 'Avg Win / Avg Loss' });
+    expect(within(avgTile).getByText(`${MASKED_AMOUNT} / ${MASKED_AMOUNT}`)).toBeInTheDocument();
+  });
+
+  test('privacy mode ON: percentages and ratios still display', () => {
+    renderPrivate(baseSummary);
+    const winTile = screen.getByRole('region', { name: 'Win Rate' });
+    expect(within(winTile).getByText('75.0%')).toBeInTheDocument();
+    const pctTile = screen.getByRole('region', { name: 'Avg % Return' });
+    expect(within(pctTile).getByText('+5.5% / -3.2%')).toBeInTheDocument();
+    const ratioTile = screen.getByRole('region', { name: 'Gain/Loss Ratio' });
+    expect(within(ratioTile).getByText('4.00')).toBeInTheDocument();
+    const avgTile = screen.getByRole('region', { name: 'Avg Win / Avg Loss' });
+    expect(within(avgTile).getByText('Reward:risk 1.33×')).toBeInTheDocument();
+  });
+
+  test('privacy mode OFF: dollar amounts render normally', () => {
+    window.localStorage.setItem(PRIVACY_MODE_STORAGE_KEY, 'false');
+    renderPrivate(baseSummary);
+    const plTile = screen.getByRole('region', { name: 'Total Realized P/L' });
+    expect(within(plTile).getByText('+$1,234.56')).toBeInTheDocument();
   });
 });

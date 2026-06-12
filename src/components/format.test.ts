@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   DASH,
+  MASKED_AMOUNT,
   formatCompactCurrency,
   formatPercent,
   formatRatio,
@@ -40,6 +41,13 @@ describe('formatSignedCurrency', () => {
   test('NaN returns dash', () => {
     expect(formatSignedCurrency(Number.NaN)).toBe(DASH);
   });
+
+  test('bubbles-1c2: masked returns the privacy mask regardless of value', () => {
+    expect(formatSignedCurrency(1234.56, true)).toBe(MASKED_AMOUNT);
+    expect(formatSignedCurrency(-1234.56, true)).toBe(MASKED_AMOUNT);
+    expect(formatSignedCurrency(0, true)).toBe(MASKED_AMOUNT);
+    expect(formatSignedCurrency(Number.NaN, true)).toBe(MASKED_AMOUNT);
+  });
 });
 
 describe('formatCompactCurrency', () => {
@@ -55,6 +63,12 @@ describe('formatCompactCurrency', () => {
 
   test('NaN returns dash', () => {
     expect(formatCompactCurrency(Number.NaN)).toBe(DASH);
+  });
+
+  test('bubbles-1c2: masked returns the privacy mask regardless of value', () => {
+    expect(formatCompactCurrency(4800, true)).toBe(MASKED_AMOUNT);
+    expect(formatCompactCurrency(-2400, true)).toBe(MASKED_AMOUNT);
+    expect(formatCompactCurrency(Number.NaN, true)).toBe(MASKED_AMOUNT);
   });
 });
 

@@ -1,5 +1,7 @@
 export const DASH = '—';
 
+export const MASKED_AMOUNT = '•••';
+
 const currencyFmt = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
@@ -19,13 +21,15 @@ export const formatRatio = (n: number | null): string => {
   return n.toFixed(2);
 };
 
-export const formatSignedCurrency = (n: number): string => {
+export const formatSignedCurrency = (n: number, masked = false): string => {
+  if (masked) return MASKED_AMOUNT;
   if (!Number.isFinite(n)) return DASH;
   if (n > 0) return `+${currencyFmt.format(n)}`;
   return currencyFmt.format(n);
 };
 
-export const formatCompactCurrency = (n: number): string => {
+export const formatCompactCurrency = (n: number, masked = false): string => {
+  if (masked) return MASKED_AMOUNT;
   if (!Number.isFinite(n)) return DASH;
   return compactCurrencyFmt.format(n).replace(/\.0(?=[A-Z]|$)/, '');
 };

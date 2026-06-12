@@ -3,6 +3,7 @@ import {
   formatSignedCurrency,
   formatSignedPercent,
 } from '../format.ts';
+import { usePrivacyMode } from '../usePrivacyMode.tsx';
 import './HoverTooltip.css';
 
 export const TOOLTIP_WIDTH = 220;
@@ -38,9 +39,11 @@ const formatQty = (n: number): string => {
   return n.toFixed(2).replace(/\.?0+$/, '');
 };
 
-const formatCostBasis = (n: number): string => formatSignedCurrency(n).replace(/^\+/, '');
+const formatCostBasis = (n: number, masked: boolean): string => formatSignedCurrency(n, masked).replace(/^\+/, '');
 
 function HoverTooltip({ datum, anchorX, anchorY, containerWidth }: HoverTooltipProps) {
+  const { privacyMode } = usePrivacyMode();
+
   if (!datum) return null;
 
   const isGain = datum.pl >= 0;
@@ -72,7 +75,7 @@ function HoverTooltip({ datum, anchorX, anchorY, containerWidth }: HoverTooltipP
         <div className="hover-tooltip__row">
           <dt>P/L</dt>
           <dd className={isGain ? 'hover-tooltip__value--gain' : 'hover-tooltip__value--loss'}>
-            {formatSignedCurrency(datum.pl)}
+            {formatSignedCurrency(datum.pl, privacyMode)}
           </dd>
         </div>
         <div className="hover-tooltip__row">
@@ -83,7 +86,7 @@ function HoverTooltip({ datum, anchorX, anchorY, containerWidth }: HoverTooltipP
         </div>
         <div className="hover-tooltip__row">
           <dt>Cost Basis</dt>
-          <dd>{formatCostBasis(datum.costBasis)}</dd>
+          <dd>{formatCostBasis(datum.costBasis, privacyMode)}</dd>
         </div>
         <div className="hover-tooltip__row">
           <dt>Closed Qty</dt>

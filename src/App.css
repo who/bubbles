@@ -19,6 +19,12 @@
   margin: 0;
 }
 
+.app__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .app__error {
   margin: 0 0 1rem;
   padding: 0.75rem 1rem;
