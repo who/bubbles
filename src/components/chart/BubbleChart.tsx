@@ -13,7 +13,7 @@ export const CHART_HEIGHT = 380;
 export const CHART_MARGIN = {
   top: 16,
   right: 24,
-  bottom: 32,
+  bottom: 56,
   left: 56,
 } as const;
 export const PLOT_WIDTH = CHART_WIDTH - CHART_MARGIN.left - CHART_MARGIN.right;

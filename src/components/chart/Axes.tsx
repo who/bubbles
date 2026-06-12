@@ -5,7 +5,8 @@ export const Y_TICK_INCREMENT = 250;
 export const ZERO_LINE_STROKE = '#3D4651';
 export const GRID_LINE_STROKE = '#E5E7EB';
 
-const X_LABEL_DY = 16;
+export const X_LABEL_ROTATION = -45;
+
 const Y_LABEL_DX = 8;
 
 export interface XAxisProps {
@@ -25,8 +26,10 @@ export function XAxis({ xScale, dates, plotHeight }: XAxisProps) {
         >
           <text
             className="bubble-chart__tick-label"
-            y={X_LABEL_DY}
-            textAnchor="middle"
+            dx="-0.5em"
+            dy="0.4em"
+            textAnchor="end"
+            transform={`rotate(${X_LABEL_ROTATION})`}
           >
             {format(d, 'MMM d')}
           </text>

@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
-import { XAxis, YAxis, ZERO_LINE_STROKE } from './Axes.tsx';
+import { X_LABEL_ROTATION, XAxis, YAxis, ZERO_LINE_STROKE } from './Axes.tsx';
 import { buildXScale, buildYScale, distinctDates, type ChartDatum } from './scales.ts';
 
 const PLOT_WIDTH = 720;
@@ -79,6 +79,21 @@ describe('XAxis (PRD §7.2 X axis)', () => {
     const expectedX = xScale(new Date(2026, 3, 5));
     expect(firstTick!.getAttribute('transform'))
       .toBe(`translate(${expectedX}, ${PLOT_HEIGHT})`);
+  });
+
+  test('tick labels are rotated -45deg and end-anchored at the tick (bubbles-isc)', () => {
+    const data = [
+      datum({ closeDate: new Date(2026, 3, 5) }),
+      datum({ closeDate: new Date(2026, 3, 6) }),
+    ];
+    const { container } = renderXAxis(data);
+    const labels = container.querySelectorAll('.tick text');
+    expect(labels.length).toBeGreaterThan(0);
+    expect(X_LABEL_ROTATION).toBe(-45);
+    labels.forEach((t) => {
+      expect(t.getAttribute('transform')).toBe(`rotate(${X_LABEL_ROTATION})`);
+      expect(t.getAttribute('text-anchor')).toBe('end');
+    });
   });
 
   test('does not render an axis line (PRD §7.2: no axis line, no vertical gridlines)', () => {
