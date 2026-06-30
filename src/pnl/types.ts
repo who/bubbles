@@ -21,6 +21,25 @@ export type ClosedContract = {
   tradeCount: number;
 };
 
+export type OpenPosition = {
+  instrument: string;
+  description: string;
+  openQty: number;
+  costBasis: number;
+  openDate: Date;
+  tradeCount: number;
+};
+
+// An open position priced against a current mark. `currentPrice` (and the
+// derived fields) are null when no mark is available so the UI can still
+// render the position with neutral/unknown P/L.
+export type UnrealizedPosition = OpenPosition & {
+  currentPrice: number | null;
+  currentValue: number | null;
+  unrealizedPl: number | null;
+  pctReturn: number | null;
+};
+
 export type Summary = {
   totalPl: number;
   totalGain: number;

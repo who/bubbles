@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { computeClosedContracts } from './computePnl.ts';
+import {
+  computeClosedContracts, computeOpenPositions, priceOpenPositions,
+} from './computePnl.ts';
 import type { RawTrade } from './types';
 
 const TOLERANCE_DIGITS = 9;
@@ -214,5 +216,111 @@ describe('computeClosedContracts — worthless expiration (bubbles-10p)', () => 
       }),
     ];
     expect(computeClosedContracts(trades)).toHaveLength(0);
+  });
+});
+
+describe('computeOpenPositions (bubbles-4jt)', () => {
+  test('fully-open BTO surfaces openQty, costBasis, openDate', () => {
+    const trades: RawTrade[] = [
+      trade({
+        transCode: 'BTO', quantity: 10, amount: -1000, activityDate: new Date('2026-04-10T00:00:00Z'),
+      }),
+    ];
+
+    const result = computeOpenPositions(trades);
+    expect(result).toHaveLength(1);
+    const [p] = result;
+    if (!p) throw new Error('missing position');
+    expect(p.instrument).toBe('INTC');
+    expect(p.description).toBe('INTC 4/24/2026 Call $25.00');
+    expect(p.openQty).toBe(10);
+    expect(p.costBasis).toBeCloseTo(1000, TOLERANCE_DIGITS);
+    expect(p.openDate.toISOString()).toBe('2026-04-10T00:00:00.000Z');
+    expect(p.tradeCount).toBe(1);
+
+    // The same trades produce no realized contract.
+    expect(computeClosedContracts(trades)).toHaveLength(0);
+  });
+
+  test('partial close leaves the remaining quantity open with proportional cost basis', () => {
+    const trades: RawTrade[] = [
+      trade({
+        transCode: 'BTO', quantity: 10, amount: -1000, activityDate: new Date('2026-04-10T00:00:00Z'),
+      }),
+      trade({
+        transCode: 'STC', quantity: 4, amount: 600, activityDate: new Date('2026-04-25T00:00:00Z'),
+      }),
+    ];
+
+    const [p] = computeOpenPositions(trades);
+    if (!p) throw new Error('missing position');
+    expect(p.openQty).toBe(6);
+    // costBasis = 1000 * (6/10) = 600 (the un-closed slice)
+    expect(p.costBasis).toBeCloseTo(600, TOLERANCE_DIGITS);
+
+    // The closed slice still appears as a realized ClosedContract (unchanged).
+    const closed = computeClosedContracts(trades);
+    expect(closed).toHaveLength(1);
+    expect(closed[0]?.closedQty).toBe(4);
+  });
+
+  test('fully closed (STC) and expired (OEXP) buckets are not open', () => {
+    const closedTrades: RawTrade[] = [
+      trade({ transCode: 'BTO', quantity: 5, amount: -500 }),
+      trade({ transCode: 'STC', quantity: 5, amount: 700 }),
+    ];
+    expect(computeOpenPositions(closedTrades)).toHaveLength(0);
+
+    const expiredTrades: RawTrade[] = [
+      trade({ transCode: 'BTO', quantity: 5, amount: -500 }),
+      trade({ transCode: 'OEXP', quantity: 5, amount: 0 }),
+    ];
+    expect(computeOpenPositions(expiredTrades)).toHaveLength(0);
+  });
+
+  test('empty input yields no positions', () => {
+    expect(computeOpenPositions([])).toEqual([]);
+  });
+});
+
+describe('priceOpenPositions (bubbles-4jt)', () => {
+  test('computes unrealizedPl and pctReturn from a current mark', () => {
+    const positions = computeOpenPositions([
+      trade({
+        transCode: 'BTO', quantity: 10, amount: -1000, activityDate: new Date('2026-04-10T00:00:00Z'),
+      }),
+    ]);
+
+    // mark $1.50/share → 10 contracts * 100 * 1.50 = $1500 current value.
+    const [priced] = priceOpenPositions(positions, { 'INTC 4/24/2026 Call $25.00': 1.5 });
+    if (!priced) throw new Error('missing priced position');
+    expect(priced.currentPrice).toBe(1.5);
+    expect(priced.currentValue).toBeCloseTo(1500, TOLERANCE_DIGITS);
+    expect(priced.unrealizedPl).toBeCloseTo(500, TOLERANCE_DIGITS);
+    expect(priced.pctReturn).toBeCloseTo(50, TOLERANCE_DIGITS);
+  });
+
+  test('an unpriceable position is kept with null/neutral P/L, not dropped', () => {
+    const positions = computeOpenPositions([
+      trade({ transCode: 'BTO', quantity: 1, amount: -100 }),
+    ]);
+
+    // No entry in the price map (UW miss / fictional ticker).
+    const [priced] = priceOpenPositions(positions, {});
+    if (!priced) throw new Error('missing priced position');
+    expect(priced.openQty).toBe(1);
+    expect(priced.costBasis).toBeCloseTo(100, TOLERANCE_DIGITS);
+    expect(priced.currentPrice).toBeNull();
+    expect(priced.currentValue).toBeNull();
+    expect(priced.unrealizedPl).toBeNull();
+    expect(priced.pctReturn).toBeNull();
+  });
+
+  test('a null price entry is treated as a miss', () => {
+    const positions = computeOpenPositions([
+      trade({ transCode: 'BTO', quantity: 1, amount: -100 }),
+    ]);
+    const [priced] = priceOpenPositions(positions, { 'INTC 4/24/2026 Call $25.00': null });
+    expect(priced?.unrealizedPl).toBeNull();
   });
 });
