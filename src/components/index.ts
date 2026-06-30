@@ -14,3 +14,10 @@ export {
   PRIVACY_MODE_STORAGE_KEY,
 } from './usePrivacyMode.tsx';
 export type { PrivacyModeValue } from './usePrivacyMode.tsx';
+export { default as UnrealizedToggle } from './UnrealizedToggle.tsx';
+export {
+  UnrealizedModeProvider,
+  useUnrealizedMode,
+  UNREALIZED_MODE_STORAGE_KEY,
+} from './useUnrealizedMode.tsx';
+export type { UnrealizedModeValue } from './useUnrealizedMode.tsx';

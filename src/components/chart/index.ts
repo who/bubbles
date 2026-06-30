@@ -15,8 +15,8 @@ export {
   GRID_LINE_STROKE,
 } from './Axes.tsx';
 export type { XAxisProps, YAxisProps } from './Axes.tsx';
-export { default as Bubbles } from './Bubbles.tsx';
-export type { BubbleDatum, BubblesProps } from './Bubbles.tsx';
+export { default as Bubbles, UNREALIZED_DASHARRAY } from './Bubbles.tsx';
+export type { BubbleDatum, BubblesProps, BubbleVariant } from './Bubbles.tsx';
 export {
   default as HoverTooltip,
   EDGE_THRESHOLD,
@@ -29,5 +29,5 @@ export type {
   HoverTooltipProps,
   TooltipDatum,
 } from './HoverTooltip.tsx';
-export { buildRScale, buildXScale, buildYScale } from './scales.ts';
+export { buildRScale, buildXScale, buildYScale, datumMagnitude } from './scales.ts';
 export type { ChartDatum } from './scales.ts';

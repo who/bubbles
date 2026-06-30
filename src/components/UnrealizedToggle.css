@@ -1,0 +1,35 @@
+.unrealized-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.unrealized-toggle:hover {
+  background-color: var(--color-bg-surface-hover);
+}
+
+.unrealized-toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.unrealized-toggle[aria-pressed='false'] {
+  color: var(--color-text-secondary, var(--color-text-primary));
+  opacity: 0.7;
+}
+
+.unrealized-toggle__icon {
+  display: block;
+}

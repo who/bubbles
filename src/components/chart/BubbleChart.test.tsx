@@ -1,7 +1,9 @@
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
+import type { ReactElement } from 'react';
 import type { ClosedContract } from '../../pnl/index.ts';
 import BubbleChart from './BubbleChart.tsx';
+import { UnrealizedModeProvider, UnrealizedToggle } from '../index.ts';
 
 const mkContract = (overrides: Partial<ClosedContract> = {}): ClosedContract => ({
   instrument: 'AAPL',
@@ -211,5 +213,82 @@ describe('BubbleChart empty result state (bubbles-xad.6)', () => {
     expect(container.querySelector('svg')).toBeNull();
     expect(container.querySelector('.bubble-chart__x-axis')).toBeNull();
     expect(container.querySelector('.bubble-chart__y-axis')).toBeNull();
+  });
+});
+
+describe('BubbleChart — unrealized bubbles + toggle (bubbles-1xy)', () => {
+  const mkUnrealized = (
+    overrides: Partial<import('../../pnl/index.ts').UnrealizedPosition> = {},
+  ): import('../../pnl/index.ts').UnrealizedPosition => ({
+    instrument: 'AAPL',
+    description: 'AAPL 5/8/2026 Call $200.00',
+    openQty: 2,
+    costBasis: 400,
+    openDate: new Date(2026, 4, 2),
+    tradeCount: 1,
+    currentPrice: 3,
+    currentValue: 600,
+    unrealizedPl: 200,
+    pctReturn: 50,
+    ...overrides,
+  });
+
+  const withProvider = (node: ReactElement) => render(
+    <UnrealizedModeProvider>{node}</UnrealizedModeProvider>,
+  );
+
+  test('renders realized + unrealized bubbles when the mode is on (default)', () => {
+    const { container } = withProvider(
+      <BubbleChart data={[mkContract()]} unrealized={[mkUnrealized()]} />,
+    );
+    const chart = container.querySelector('.bubble-chart') as HTMLElement;
+    expect(chart.dataset.bubbleCount).toBe('1');
+    expect(chart.dataset.unrealizedCount).toBe('1');
+    expect(container.querySelectorAll('circle')).toHaveLength(2);
+    expect(
+      container.querySelectorAll('circle[data-bubble-id^="open|"]'),
+    ).toHaveLength(1);
+    const open = findCircle(container, 'open|');
+    expect(open.getAttribute('data-bubble-variant')).toBe('unrealized');
+    expect(open.getAttribute('stroke-dasharray')).toBe('4 3');
+    // priced gain → pastel green
+    expect(open.getAttribute('stroke')).toBe('#66BB6A');
+  });
+
+  test('toggling OFF hides all unrealized bubbles; realized untouched', () => {
+    const { container } = withProvider(
+      <>
+        <UnrealizedToggle />
+        <BubbleChart data={[mkContract()]} unrealized={[mkUnrealized()]} />
+      </>,
+    );
+    expect(container.querySelectorAll('circle[data-bubble-id^="open|"]')).toHaveLength(1);
+
+    fireEvent.click(container.querySelector('.unrealized-toggle') as HTMLElement);
+
+    const chart = container.querySelector('.bubble-chart') as HTMLElement;
+    expect(chart.dataset.unrealizedCount).toBe('0');
+    expect(container.querySelectorAll('circle[data-bubble-id^="open|"]')).toHaveLength(0);
+    // realized bubble still present and solid
+    const realized = findCircle(container, 'contract|');
+    expect(realized.getAttribute('stroke-dasharray')).toBeNull();
+    // Scope to the chart: the toggle's own icon also contains a <circle>.
+    const plot = container.querySelector('.bubble-chart') as HTMLElement;
+    expect(plot.querySelectorAll('circle')).toHaveLength(1);
+  });
+
+  test('un-priced open position renders a neutral dashed bubble', () => {
+    const neutral = mkUnrealized({
+      currentPrice: null,
+      currentValue: null,
+      unrealizedPl: null,
+      pctReturn: null,
+    });
+    const { container } = withProvider(
+      <BubbleChart data={[mkContract()]} unrealized={[neutral]} />,
+    );
+    const open = findCircle(container, 'open|');
+    expect(open.getAttribute('stroke')).toBe('#9E9E9E');
+    expect(open.getAttribute('stroke-dasharray')).toBe('4 3');
   });
 });

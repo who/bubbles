@@ -5,14 +5,20 @@ import {
   PrivacyToggle,
   StatsStrip,
   ThemeToggle,
+  UnrealizedModeProvider,
+  UnrealizedToggle,
 } from './components/index.ts';
 import { BubbleChart } from './components/chart/index.ts';
 import { parseCsv } from './parsing/index.ts';
 import {
   computeClosedContracts,
+  computeOpenPositions,
   computeSummary,
+  priceOpenPositions,
 } from './pnl/index.ts';
-import type { ClosedContract, Summary } from './pnl/index.ts';
+import type {
+  ClosedContract, PriceLookup, RawTrade, Summary, UnrealizedPosition,
+} from './pnl/index.ts';
 import './App.css';
 
 type Status = 'empty' | 'parsing' | 'results' | 'error';
@@ -32,10 +38,44 @@ function totalSkippedRows(warnings: readonly string[]): number {
   }, 0);
 }
 
+type PricesResponse = {
+  prices?: Record<string, { price?: number } | undefined>;
+};
+
+// Price the still-open positions against live marks from the /api/prices proxy.
+// Best-effort: any network/proxy failure falls back to neutral (un-priced)
+// positions so the open-position bubbles still render, just without P/L color.
+async function buildUnrealized(trades: readonly RawTrade[]): Promise<UnrealizedPosition[]> {
+  const open = computeOpenPositions(trades);
+  if (open.length === 0) {
+    return [];
+  }
+
+  try {
+    const params = new URLSearchParams();
+    open.forEach((p) => params.append('id', p.description));
+    const response = await fetch(`/api/prices?${params.toString()}`);
+    if (!response.ok) {
+      return priceOpenPositions(open, {});
+    }
+    const body = (await response.json()) as PricesResponse;
+    const lookup: PriceLookup = {};
+    Object.entries(body.prices ?? {}).forEach(([id, quote]) => {
+      if (quote && typeof quote.price === 'number') {
+        lookup[id] = quote.price;
+      }
+    });
+    return priceOpenPositions(open, lookup);
+  } catch {
+    return priceOpenPositions(open, {});
+  }
+}
+
 function App() {
   const [status, setStatus] = useState<Status>('empty');
   const [summary, setSummary] = useState<Summary | null>(null);
   const [contracts, setContracts] = useState<ClosedContract[]>([]);
+  const [unrealized, setUnrealized] = useState<UnrealizedPosition[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -60,6 +100,7 @@ function App() {
     setError(null);
     setSummary(null);
     setContracts([]);
+    setUnrealized([]);
     setWarnings([]);
     setFileName(file.name);
     setRowsParsed(0);
@@ -80,11 +121,18 @@ function App() {
       setSummary(computed);
       setWarnings(parseWarnings);
       setStatus('results');
+
+      // Live open-position marks load asynchronously; the realized chart
+      // renders immediately and unrealized bubbles fill in when ready.
+      buildUnrealized(trades)
+        .then(setUnrealized)
+        .catch(() => setUnrealized([]));
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to parse CSV.';
       setError(message);
       setSummary(null);
       setContracts([]);
+      setUnrealized([]);
       setWarnings([]);
       setStatus('error');
     }
@@ -116,6 +164,7 @@ function App() {
     setStatus('empty');
     setSummary(null);
     setContracts([]);
+    setUnrealized([]);
     setWarnings([]);
     setError(null);
     setFileName(null);
@@ -130,16 +179,20 @@ function App() {
     ? Math.min(100, Math.max(0, (bytesProcessed / totalBytes) * 100))
     : 0;
 
+  const showUnrealizedToggle = Boolean(showResults) && unrealized.length > 0;
+
   return (
     <PrivacyModeProvider>
-      <main className="app">
-        <header className="app__header">
-          <h1>PnL Bubbles</h1>
-          <div className="app__header-actions">
-            <PrivacyToggle />
-            <ThemeToggle />
-          </div>
-        </header>
+      <UnrealizedModeProvider>
+        <main className="app">
+          <header className="app__header">
+            <h1>PnL Bubbles</h1>
+            <div className="app__header-actions">
+              {showUnrealizedToggle ? <UnrealizedToggle /> : null}
+              <PrivacyToggle />
+              <ThemeToggle />
+            </div>
+          </header>
         {error ? (
           <p className="app__error" role="alert">
             {error}
@@ -190,7 +243,7 @@ function App() {
                 </p>
               </header>
               <div className="app__chart-slot">
-                <BubbleChart data={contracts} />
+                <BubbleChart data={contracts} unrealized={unrealized} />
               </div>
             </section>
             {warnings.length > 0 ? (
@@ -219,7 +272,8 @@ function App() {
             </button>
           </>
         ) : null}
-      </main>
+        </main>
+      </UnrealizedModeProvider>
     </PrivacyModeProvider>
   );
 }

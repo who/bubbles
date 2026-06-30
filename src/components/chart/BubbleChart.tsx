@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import type { ClosedContract } from '../../pnl/index.ts';
+import type { ClosedContract, UnrealizedPosition } from '../../pnl/index.ts';
+import { useUnrealizedMode } from '../useUnrealizedMode.tsx';
 import { XAxis, YAxis } from './Axes.tsx';
 import Bubbles, { type BubbleDatum } from './Bubbles.tsx';
 import HoverTooltip, {
@@ -21,10 +22,15 @@ export const PLOT_HEIGHT = CHART_HEIGHT - CHART_MARGIN.top - CHART_MARGIN.bottom
 
 export type BubbleChartProps = {
   data: readonly ClosedContract[];
+  unrealized?: readonly UnrealizedPosition[];
 };
 
 const contractId = (c: ClosedContract): string => (
   `contract|${c.instrument}|${c.description}|${c.closeDate.toISOString()}`
+);
+
+const openId = (p: UnrealizedPosition): string => (
+  `open|${p.instrument}|${p.description}|${p.openDate.toISOString()}`
 );
 
 const toBubbleData = (data: readonly ClosedContract[]): BubbleDatum[] => (
@@ -33,7 +39,28 @@ const toBubbleData = (data: readonly ClosedContract[]): BubbleDatum[] => (
     closeDate: c.closeDate,
     pctReturn: c.pctReturn,
     pl: c.pl,
+    variant: 'realized',
   }))
+);
+
+// Map open positions to bubbles. They sit on the time axis at their open date,
+// at their unrealized % return (break-even for un-priced positions). Un-priced
+// positions render neutral and size off cost basis rather than P/L.
+const toUnrealizedBubbleData = (
+  positions: readonly UnrealizedPosition[],
+): BubbleDatum[] => (
+  positions.map((p) => {
+    const priced = p.unrealizedPl !== null;
+    return {
+      id: openId(p),
+      closeDate: p.openDate,
+      pctReturn: p.pctReturn ?? 0,
+      pl: p.unrealizedPl ?? 0,
+      magnitude: priced ? Math.abs(p.unrealizedPl as number) : p.costBasis,
+      variant: 'unrealized' as const,
+      neutral: !priced,
+    };
+  })
 );
 
 const tooltipForContract = (c: ClosedContract): ContractTooltipDatum => ({
@@ -63,17 +90,28 @@ const findHovered = (
 
 export const EMPTY_RESULT_MESSAGE = 'This file has no matched closes. All positions appear to still be open.';
 
-function BubbleChart({ data }: BubbleChartProps) {
+function BubbleChart({ data, unrealized = [] }: BubbleChartProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const { unrealizedMode } = useUnrealizedMode();
 
-  const bubbleData = useMemo(() => toBubbleData(data), [data]);
+  const realizedData = useMemo(() => toBubbleData(data), [data]);
+  const unrealizedData = useMemo(
+    () => toUnrealizedBubbleData(unrealized),
+    [unrealized],
+  );
+  const showUnrealized = unrealizedMode && unrealizedData.length > 0;
+  const visibleData = useMemo(
+    () => (showUnrealized ? [...realizedData, ...unrealizedData] : realizedData),
+    [showUnrealized, realizedData, unrealizedData],
+  );
 
-  if (bubbleData.length === 0) {
+  if (realizedData.length === 0) {
     return (
       <div
         className="bubble-chart bubble-chart--empty"
         data-grouping-mode="contract"
         data-bubble-count={0}
+        data-unrealized-count={showUnrealized ? unrealizedData.length : 0}
         style={{ width: `${CHART_WIDTH}px`, height: `${CHART_HEIGHT}px` }}
       >
         <p className="bubble-chart__empty-message" role="status">
@@ -83,10 +121,10 @@ function BubbleChart({ data }: BubbleChartProps) {
     );
   }
 
-  const xScale = buildXScale(bubbleData, PLOT_WIDTH);
-  const xDates = distinctDates(bubbleData);
-  const yScale = buildYScale(bubbleData, PLOT_HEIGHT);
-  const rScale = buildRScale(bubbleData);
+  const xScale = buildXScale(visibleData, PLOT_WIDTH);
+  const xDates = distinctDates(visibleData);
+  const yScale = buildYScale(visibleData, PLOT_HEIGHT);
+  const rScale = buildRScale(visibleData);
 
   const hovered = findHovered(data, hoveredId);
   const anchorX = hovered ? CHART_MARGIN.left + xScale(hovered.closeDate) : 0;
@@ -96,7 +134,8 @@ function BubbleChart({ data }: BubbleChartProps) {
     <div
       className="bubble-chart"
       data-grouping-mode="contract"
-      data-bubble-count={bubbleData.length}
+      data-bubble-count={realizedData.length}
+      data-unrealized-count={showUnrealized ? unrealizedData.length : 0}
       style={{ width: `${CHART_WIDTH}px`, height: `${CHART_HEIGHT}px` }}
     >
       <svg
@@ -111,7 +150,7 @@ function BubbleChart({ data }: BubbleChartProps) {
           <YAxis yScale={yScale} plotWidth={PLOT_WIDTH} />
           <XAxis xScale={xScale} dates={xDates} plotHeight={PLOT_HEIGHT} />
           <Bubbles
-            data={bubbleData}
+            data={visibleData}
             xScale={xScale}
             yScale={yScale}
             rScale={rScale}
@@ -128,5 +167,9 @@ function BubbleChart({ data }: BubbleChartProps) {
     </div>
   );
 }
+
+BubbleChart.defaultProps = {
+  unrealized: [],
+};
 
 export default BubbleChart;

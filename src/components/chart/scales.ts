@@ -12,7 +12,16 @@ export type ChartDatum = {
   readonly closeDate: Date;
   readonly pctReturn: number;
   readonly pl: number;
+  // Optional override for bubble-radius sizing. Used by neutral unrealized
+  // positions (no mark, so pl is 0) which size off cost basis instead.
+  readonly magnitude?: number;
 };
+
+// The magnitude a bubble is sized by: an explicit override when present,
+// otherwise the absolute P/L.
+export const datumMagnitude = (d: ChartDatum): number => (
+  d.magnitude ?? Math.abs(d.pl)
+);
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const X_PAD_DAYS = 2;
@@ -67,6 +76,6 @@ export const buildYScale = (
 export const buildRScale = (
   data: readonly ChartDatum[],
 ): ScalePower<number, number> => {
-  const peak = max(data, (d) => Math.abs(d.pl)) ?? 0;
+  const peak = max(data, datumMagnitude) ?? 0;
   return scaleSqrt().domain([0, peak]).range([R_RANGE[0], R_RANGE[1]]);
 };

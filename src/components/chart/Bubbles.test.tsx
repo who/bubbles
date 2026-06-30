@@ -123,3 +123,66 @@ describe('Bubbles (PRD §7.2 bubble rendering)', () => {
     expect(container.querySelectorAll('circle')).toHaveLength(0);
   });
 });
+
+describe('Bubbles — unrealized variant (bubbles-1xy)', () => {
+  test('unrealized gain uses the pastel gain palette and a dashed outline', () => {
+    const data: readonly BubbleDatum[] = [
+      {
+        id: 'u', closeDate: new Date(2026, 3, 15), pctReturn: 30, pl: 250, variant: 'unrealized',
+      },
+    ];
+    const { container } = renderBubbles(data);
+    const circle = findById(container, 'u');
+    expect(circle.getAttribute('stroke')).toBe('#66BB6A');
+    expect(circle.getAttribute('fill')).toBe('rgba(129,199,132,0.18)');
+    expect(circle.getAttribute('stroke-dasharray')).toBe('4 3');
+    expect(circle.getAttribute('data-bubble-variant')).toBe('unrealized');
+  });
+
+  test('unrealized loss uses the pastel loss palette and a dashed outline', () => {
+    const data: readonly BubbleDatum[] = [
+      {
+        id: 'u', closeDate: new Date(2026, 3, 15), pctReturn: -30, pl: -250, variant: 'unrealized',
+      },
+    ];
+    const { container } = renderBubbles(data);
+    const circle = findById(container, 'u');
+    expect(circle.getAttribute('stroke')).toBe('#EF5350');
+    expect(circle.getAttribute('fill')).toBe('rgba(239,154,154,0.18)');
+    expect(circle.getAttribute('stroke-dasharray')).toBe('4 3');
+  });
+
+  test('un-priced (neutral) unrealized renders neutral color, dashed, sized off magnitude', () => {
+    const data: readonly BubbleDatum[] = [
+      {
+        id: 'n',
+        closeDate: new Date(2026, 3, 15),
+        pctReturn: 0,
+        pl: 0,
+        magnitude: 800,
+        variant: 'unrealized',
+        neutral: true,
+      },
+    ];
+    const { container, rScale } = renderBubbles(data);
+    const circle = findById(container, 'n');
+    expect(circle.getAttribute('stroke')).toBe('#9E9E9E');
+    expect(circle.getAttribute('fill')).toBe('rgba(158,158,158,0.15)');
+    expect(circle.getAttribute('stroke-dasharray')).toBe('4 3');
+    expect(circle.getAttribute('r')).toBe(String(rScale(800)));
+  });
+
+  test('realized bubbles are unaffected: solid palette, no dasharray', () => {
+    const data: readonly BubbleDatum[] = [
+      {
+        id: 'r', closeDate: new Date(2026, 3, 15), pctReturn: 30, pl: 250, variant: 'realized',
+      },
+    ];
+    const { container } = renderBubbles(data);
+    const circle = findById(container, 'r');
+    expect(circle.getAttribute('stroke')).toBe('#2E7D32');
+    expect(circle.getAttribute('fill')).toBe('rgba(76,175,80,0.22)');
+    expect(circle.getAttribute('stroke-dasharray')).toBeNull();
+    expect(circle.getAttribute('data-bubble-variant')).toBe('realized');
+  });
+});
