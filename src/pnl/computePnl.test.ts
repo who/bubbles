@@ -180,3 +180,39 @@ describe('computeClosedContracts (PRD §6.2)', () => {
     expect(computeClosedContracts([])).toEqual([]);
   });
 });
+
+describe('computeClosedContracts — worthless expiration (bubbles-10p)', () => {
+  test('long closed by OEXP (no STC) yields proceeds $0, pl = -costBasis, -100%', () => {
+    const trades: RawTrade[] = [
+      trade({
+        transCode: 'BTO', quantity: 2, amount: -200, activityDate: new Date('2026-04-22T00:00:00Z'),
+      }),
+      trade({
+        transCode: 'OEXP', quantity: 2, amount: 0, activityDate: new Date('2026-04-29T00:00:00Z'),
+      }),
+    ];
+
+    const result = computeClosedContracts(trades);
+    expect(result).toHaveLength(1);
+    const [c] = result;
+    if (!c) throw new Error('missing contract');
+    expect(c.proceeds).toBe(0);
+    expect(c.pl).toBeCloseTo(-200, TOLERANCE_DIGITS);
+    expect(c.costBasis).toBeCloseTo(200, TOLERANCE_DIGITS);
+    expect(c.pctReturn).toBeCloseTo(-100, TOLERANCE_DIGITS);
+    expect(c.closedQty).toBe(2);
+    expect(c.openDate.toISOString()).toBe('2026-04-22T00:00:00.000Z');
+    // Close date is the expiration date.
+    expect(c.closeDate.toISOString()).toBe('2026-04-29T00:00:00.000Z');
+    expect(c.grossVolume).toBeCloseTo(200, TOLERANCE_DIGITS);
+  });
+
+  test('OEXP without any BTO in the bucket produces no contract', () => {
+    const trades: RawTrade[] = [
+      trade({
+        transCode: 'OEXP', quantity: 1, amount: 0, activityDate: new Date('2026-04-29T00:00:00Z'),
+      }),
+    ];
+    expect(computeClosedContracts(trades)).toHaveLength(0);
+  });
+});

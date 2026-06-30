@@ -63,6 +63,29 @@ export function parseQty(input: string): number {
   return n;
 }
 
+const OEXP_DESCRIPTION_PATTERN = /^Option Expiration for\s+(\S+)\s+(.+)$/i;
+
+// Robinhood books an option expiration as
+//   "Option Expiration for TSLA Call $420.00"
+// but the BTO fill that opened the position is described as
+//   "TSLA 4/29/2026 Call $420.00".
+// To bucket the expiration with its opening trade we rewrite the OEXP
+// description into the fill format, inserting the expiration date (which is
+// the OEXP row's own activity date). Descriptions that don't match the
+// expected shape are returned unchanged.
+export function normalizeOexpDescription(description: string, expiration: Date): string {
+  const match = OEXP_DESCRIPTION_PATTERN.exec(description.trim());
+  if (!match) {
+    return description;
+  }
+  const instrument = match[1];
+  const rest = match[2];
+  const month = expiration.getUTCMonth() + 1;
+  const day = expiration.getUTCDate();
+  const year = expiration.getUTCFullYear();
+  return `${instrument} ${month}/${day}/${year} ${rest}`;
+}
+
 export function parseDate(input: string): Date {
   if (typeof input !== 'string') {
     throw new ParseError('parseDate: expected string', String(input));

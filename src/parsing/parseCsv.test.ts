@@ -329,15 +329,13 @@ describe('parseCsv file-level validation (PRD §9)', () => {
 });
 
 describe('parseCsv non-trade row filtering (bubbles-a7j)', () => {
-  test('CDIV/OEXP/ACH/MINT/GOLD/DTAX rows with empty Quantity or Amount are skipped silently', async () => {
+  test('CDIV/ACH/MINT/GOLD/DTAX rows with empty Quantity are skipped silently', async () => {
     const csv = [
       HEADER,
       // Two valid trade fills sandwiching the non-trade rows
       '04/24/2026,04/24/2026,04/25/2026,SPY,SPY 4/26/2026 Call $500.00,BTO,1,$5.00,($505.00)',
       // CDIV: empty Quantity, populated Amount
       '04/30/2026,04/30/2026,04/30/2026,JPM,Cash Div: R/D 2026-04-06 P/D 2026-04-30,CDIV,,,$1.02',
-      // OEXP: populated Quantity (with trailing S), empty Amount
-      '04/29/2026,04/29/2026,04/30/2026,TSLA,Option Expiration for TSLA Call $420.00,OEXP,210S,,',
       // ACH deposit: empty Quantity, populated Amount
       '04/22/2026,04/22/2026,04/23/2026,,ACH Deposit,ACH,,,"$5,000.00"',
       // MINT margin rate: empty Quantity, populated Amount (parens)
@@ -352,6 +350,36 @@ describe('parseCsv non-trade row filtering (bubbles-a7j)', () => {
     expect(trades).toHaveLength(2);
     expect(trades.map((t) => t.transCode)).toEqual(['BTO', 'STC']);
     expect(warnings).toEqual([]);
+  });
+
+  test('OEXP rows are parsed: empty Amount becomes $0.00, trailing-S Quantity parsed, description normalized to fill format (bubbles-10p)', async () => {
+    const csv = [
+      HEADER,
+      '04/22/2026,04/22/2026,04/23/2026,TSLA,TSLA 4/29/2026 Call $420.00,BTO,2,$1.00,($200.00)',
+      // OEXP: populated Quantity (with trailing S), empty Amount, expiration-format description
+      '04/29/2026,04/29/2026,04/30/2026,TSLA,Option Expiration for TSLA Call $420.00,OEXP,2,,',
+    ].join('\n');
+    const { trades, warnings } = await parseCsv(makeFile(csv));
+    expect(warnings).toEqual([]);
+    expect(trades).toHaveLength(2);
+    const oexp = trades[1];
+    expect(oexp?.transCode).toBe('OEXP');
+    expect(oexp?.amount).toBe(0);
+    expect(oexp?.quantity).toBe(2);
+    // Description rewritten to the BTO fill format so it buckets together.
+    expect(oexp?.description).toBe('TSLA 4/29/2026 Call $420.00');
+    expect(oexp?.description).toBe(trades[0]?.description);
+  });
+
+  test('OEXP trailing-S quantity like "210S" is parsed to a number', async () => {
+    const csv = [
+      HEADER,
+      '04/29/2026,04/29/2026,04/30/2026,TSLA,Option Expiration for TSLA Call $420.00,OEXP,210S,,',
+    ].join('\n');
+    const { trades } = await parseCsv(makeFile(csv));
+    expect(trades).toHaveLength(1);
+    expect(trades[0]?.quantity).toBe(210);
+    expect(trades[0]?.amount).toBe(0);
   });
 
   test('quoted-comma fields in Description and Amount round-trip into RawTrade', async () => {

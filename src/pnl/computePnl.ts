@@ -21,10 +21,12 @@ function groupByContract(trades: readonly RawTrade[]): Map<string, RawTrade[]> {
 function reduceBucket(bucket: readonly RawTrade[]): ClosedContract | null {
   let btoQty = 0;
   let stcQty = 0;
+  let oexpQty = 0;
   let btoAmt = 0;
   let stcAmt = 0;
   let openDate: Date | null = null;
   let closeDate: Date | null = null;
+  let expireDate: Date | null = null;
   let tradeCount = 0;
 
   bucket.forEach((trade) => {
@@ -42,36 +44,70 @@ function reduceBucket(bucket: readonly RawTrade[]): ClosedContract | null {
       if (closeDate === null || trade.activityDate > closeDate) {
         closeDate = trade.activityDate;
       }
+    } else if (trade.transCode === 'OEXP') {
+      oexpQty += trade.quantity;
+      if (expireDate === null || trade.activityDate > expireDate) {
+        expireDate = trade.activityDate;
+      }
     }
   });
 
-  if (btoQty === 0 || stcQty === 0 || openDate === null || closeDate === null) {
+  if (btoQty === 0 || openDate === null) {
     return null;
   }
-
-  const closedQty = Math.min(btoQty, stcQty);
-  const costUsed = btoAmt * (closedQty / btoQty);
-  const proceedsUsed = stcAmt * (closedQty / stcQty);
-  const pl = costUsed + proceedsUsed;
-  const costBasis = Math.abs(costUsed);
-  const pctReturn = costBasis === 0 ? 0 : (pl / costBasis) * 100;
 
   const first = bucket[0];
   if (!first) return null;
 
-  return {
-    instrument: first.instrument,
-    description: first.description,
-    pl,
-    pctReturn,
-    closedQty,
-    costBasis,
-    proceeds: proceedsUsed,
-    grossVolume: Math.abs(btoAmt) + Math.abs(stcAmt),
-    closeDate,
-    openDate,
-    tradeCount,
-  };
+  // Sold to close (possibly partial). This is the realized-P&L path; an OEXP
+  // sharing the bucket is ignored because the sale already closed the long.
+  if (stcQty > 0 && closeDate !== null) {
+    const closedQty = Math.min(btoQty, stcQty);
+    const costUsed = btoAmt * (closedQty / btoQty);
+    const proceedsUsed = stcAmt * (closedQty / stcQty);
+    const pl = costUsed + proceedsUsed;
+    const costBasis = Math.abs(costUsed);
+    const pctReturn = costBasis === 0 ? 0 : (pl / costBasis) * 100;
+
+    return {
+      instrument: first.instrument,
+      description: first.description,
+      pl,
+      pctReturn,
+      closedQty,
+      costBasis,
+      proceeds: proceedsUsed,
+      grossVolume: Math.abs(btoAmt) + Math.abs(stcAmt),
+      closeDate,
+      openDate,
+      tradeCount,
+    };
+  }
+
+  // Expired worthless: a long that was never sold and an OEXP row retired it.
+  // No cash comes back, so the entire cost basis is lost — proceeds $0,
+  // pl = -costBasis, pctReturn -100%.
+  if (oexpQty > 0 && expireDate !== null) {
+    const pl = btoAmt;
+    const costBasis = Math.abs(btoAmt);
+    const pctReturn = costBasis === 0 ? 0 : (pl / costBasis) * 100;
+
+    return {
+      instrument: first.instrument,
+      description: first.description,
+      pl,
+      pctReturn,
+      closedQty: btoQty,
+      costBasis,
+      proceeds: 0,
+      grossVolume: Math.abs(btoAmt),
+      closeDate: expireDate,
+      openDate,
+      tradeCount: tradeCount + 1,
+    };
+  }
+
+  return null;
 }
 
 export function computeClosedContracts(trades: readonly RawTrade[]): ClosedContract[] {

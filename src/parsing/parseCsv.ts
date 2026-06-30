@@ -1,6 +1,8 @@
 import Papa from 'papaparse';
 import type { RawTrade } from '../pnl/types';
-import { ParseError, parseAmount, parseDate, parseQty } from './normalizers.ts';
+import {
+  ParseError, normalizeOexpDescription, parseAmount, parseDate, parseQty,
+} from './normalizers.ts';
 
 export type ParseCsvResult = {
   trades: RawTrade[];
@@ -39,16 +41,32 @@ function normalizeHeader(h: string): string {
 function rowToTrade(row: Record<string, string>): RawTrade | null {
   const quantityRaw = (row.quantity ?? '').trim();
   const amountRaw = (row.amount ?? '').trim();
-  if (quantityRaw === '' || amountRaw === '') {
+  const transCode = (row['trans code'] ?? '').trim();
+  const isExpiration = transCode === 'OEXP';
+
+  // Trade fills carry both Quantity and Amount. Option-expiration (OEXP) rows
+  // carry a Quantity but an empty Amount (no cash changes hands when a long
+  // expires worthless), so for those we treat the empty Amount as $0.00 and
+  // keep the row. Cash-only non-trade rows (CDIV/ACH/MINT/GOLD/DTAX) have an
+  // empty Quantity and are still dropped here.
+  if (quantityRaw === '') {
     return null;
   }
+  if (amountRaw === '' && !isExpiration) {
+    return null;
+  }
+
+  const activityDate = parseDate(row['activity date'] ?? '');
+  const description = (row.description ?? '').trim();
   return {
-    activityDate: parseDate(row['activity date'] ?? ''),
+    activityDate,
     instrument: (row.instrument ?? '').trim(),
-    description: (row.description ?? '').trim(),
-    transCode: (row['trans code'] ?? '').trim(),
+    description: isExpiration
+      ? normalizeOexpDescription(description, activityDate)
+      : description,
+    transCode,
     quantity: parseQty(quantityRaw),
-    amount: parseAmount(amountRaw),
+    amount: amountRaw === '' ? 0 : parseAmount(amountRaw),
   };
 }
 
