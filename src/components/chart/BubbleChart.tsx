@@ -5,6 +5,8 @@ import { XAxis, YAxis } from './Axes.tsx';
 import Bubbles, { type BubbleDatum } from './Bubbles.tsx';
 import HoverTooltip, {
   type ContractTooltipDatum,
+  type OpenTooltipDatum,
+  type TooltipDatum,
 } from './HoverTooltip.tsx';
 import { buildRScale, buildXScale, buildYScale, distinctDates } from './scales.ts';
 import './BubbleChart.css';
@@ -74,17 +76,41 @@ const tooltipForContract = (c: ClosedContract): ContractTooltipDatum => ({
   tradeCount: c.tradeCount,
 });
 
+const tooltipForOpen = (p: UnrealizedPosition): OpenTooltipDatum => ({
+  view: 'open',
+  name: p.description,
+  openDate: p.openDate,
+  unrealizedPl: p.unrealizedPl,
+  pctReturn: p.pctReturn,
+  costBasis: p.costBasis,
+  openQty: p.openQty,
+  tradeCount: p.tradeCount,
+});
+
+// Resolve the hovered bubble to its tooltip + plot anchor. Realized contracts
+// always resolve; open positions only when the unrealized layer is shown.
 const findHovered = (
   data: readonly ClosedContract[],
+  unrealized: readonly UnrealizedPosition[],
+  showUnrealized: boolean,
   hoveredId: string | null,
-): { datum: ContractTooltipDatum; closeDate: Date; pctReturn: number } | null => {
+): { datum: TooltipDatum; closeDate: Date; pctReturn: number } | null => {
   if (!hoveredId) return null;
-  const found = data.find((c) => contractId(c) === hoveredId);
-  if (!found) return null;
+  const contract = data.find((c) => contractId(c) === hoveredId);
+  if (contract) {
+    return {
+      datum: tooltipForContract(contract),
+      closeDate: contract.closeDate,
+      pctReturn: contract.pctReturn,
+    };
+  }
+  if (!showUnrealized) return null;
+  const open = unrealized.find((p) => openId(p) === hoveredId);
+  if (!open) return null;
   return {
-    datum: tooltipForContract(found),
-    closeDate: found.closeDate,
-    pctReturn: found.pctReturn,
+    datum: tooltipForOpen(open),
+    closeDate: open.openDate,
+    pctReturn: open.pctReturn ?? 0,
   };
 };
 
@@ -126,7 +152,7 @@ function BubbleChart({ data, unrealized = [] }: BubbleChartProps) {
   const yScale = buildYScale(visibleData, PLOT_HEIGHT);
   const rScale = buildRScale(visibleData);
 
-  const hovered = findHovered(data, hoveredId);
+  const hovered = findHovered(data, unrealized, showUnrealized, hoveredId);
   const anchorX = hovered ? CHART_MARGIN.left + xScale(hovered.closeDate) : 0;
   const anchorY = hovered ? CHART_MARGIN.top + yScale(hovered.pctReturn) : 0;
 

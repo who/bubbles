@@ -291,4 +291,71 @@ describe('BubbleChart — unrealized bubbles + toggle (bubbles-1xy)', () => {
     expect(open.getAttribute('stroke')).toBe('#9E9E9E');
     expect(open.getAttribute('stroke-dasharray')).toBe('4 3');
   });
+
+  test('bubbles-228: hovering an unrealized bubble shows an equivalent tooltip', () => {
+    const { container } = withProvider(
+      <BubbleChart data={[mkContract()]} unrealized={[mkUnrealized()]} />,
+    );
+    expect(getTooltip(container)).toBeNull();
+
+    const open = findCircle(container, 'open|');
+    fireEvent.mouseEnter(open);
+
+    const tip = getTooltip(container);
+    expect(tip).not.toBeNull();
+    expect(tip).toHaveTextContent('AAPL 5/8/2026 Call $200.00');
+    expect(tip).toHaveTextContent('Unrealized P/L');
+    expect(tip).toHaveTextContent('+$200.00');
+    expect(tip).toHaveTextContent('+50.0%');
+    expect(tip).toHaveTextContent('Open Qty');
+    expect(tip).toHaveTextContent('1 trade fill');
+
+    fireEvent.mouseLeave(open);
+    expect(getTooltip(container)).toBeNull();
+  });
+
+  test('bubbles-228: hovering a loss open position uses the loss border color', () => {
+    const loss = mkUnrealized({
+      currentPrice: 1,
+      currentValue: 200,
+      unrealizedPl: -200,
+      pctReturn: -50,
+    });
+    const { container } = withProvider(
+      <BubbleChart data={[mkContract()]} unrealized={[loss]} />,
+    );
+    fireEvent.mouseEnter(findCircle(container, 'open|'));
+    const tip = getTooltip(container) as HTMLElement;
+    expect(tip.style.borderTopColor).toBe('rgb(198, 40, 40)');
+    expect(tip).toHaveTextContent('-$200.00');
+  });
+
+  test('bubbles-228: un-priced open position tooltip is neutral with placeholders', () => {
+    const neutral = mkUnrealized({
+      currentPrice: null,
+      currentValue: null,
+      unrealizedPl: null,
+      pctReturn: null,
+    });
+    const { container } = withProvider(
+      <BubbleChart data={[mkContract()]} unrealized={[neutral]} />,
+    );
+    fireEvent.mouseEnter(findCircle(container, 'open|'));
+    const tip = getTooltip(container) as HTMLElement;
+    expect(tip.style.borderTopColor).toBe('rgb(158, 158, 158)');
+    expect(tip).toHaveTextContent('—');
+  });
+
+  test('bubbles-228: no unrealized tooltip resolves when the toggle is OFF', () => {
+    const { container } = withProvider(
+      <>
+        <UnrealizedToggle />
+        <BubbleChart data={[mkContract()]} unrealized={[mkUnrealized()]} />
+      </>,
+    );
+    // Toggle OFF removes the unrealized bubbles entirely.
+    fireEvent.click(container.querySelector('.unrealized-toggle') as HTMLElement);
+    expect(container.querySelectorAll('circle[data-bubble-id^="open|"]')).toHaveLength(0);
+    expect(getTooltip(container)).toBeNull();
+  });
 });
