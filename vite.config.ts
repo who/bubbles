@@ -1,8 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { pricesApiPlugin } from './server/vitePlugin.ts';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), pricesApiPlugin()],
   test: {
     environment: 'jsdom',
     globals: true,

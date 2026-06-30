@@ -63,9 +63,45 @@ git checkout -- src/parsing/parseCsv.ts
 npm run lint   # expect zero exit (rule lifted once the offender is gone)
 ```
 
+## Prices API (Unusual Whales proxy)
+
+Unrealized P/L for open positions needs current option marks. The browser must not hold the Unusual Whales key or call UW directly (key leakage + CORS), so a thin server-side proxy fronts UW at **`GET /api/prices`**. All proxy code lives under [`server/`](server) and is framework-agnostic.
+
+**Request** — pass open-position contract identifiers as repeated `id` params and/or a comma-separated `ids` param. Each identifier is either an OCC option symbol (`AAPL260701C00290000`) or a Robinhood-style fill description (`TSLA 4/29/2026 Call $420.00`):
+
+```
+GET /api/prices?id=AAPL260701C00290000&ids=TSLA260429C00420000,MSFT260116P00400000
+```
+
+**Response** — `price` is the current mark (NBBO midpoint, falling back to last trade). Identifiers that cannot be parsed, belong to an unknown ticker, or have no priceable quote come back in `misses` (never an error):
+
+```json
+{
+  "prices": { "AAPL260701C00290000": { "price": 1.485, "asOf": "2026-06-30T15:00:00.000Z" } },
+  "misses": ["MSFT260116P00400000"]
+}
+```
+
+The UW key is read **server-side only** from the `UNUSUAL_WHALES_SECRET` env var and is never shipped to the client. Resolved quotes are cached in-memory for ~15s. If the key is unset the endpoint responds `500`; an upstream failure responds `502`.
+
+**Running it across modes** (the endpoint is mounted the same way in each):
+
+```bash
+# dev    — Vite plugin (server/vitePlugin.ts), mounted via configureServer
+UNUSUAL_WHALES_SECRET=… npm run dev
+
+# preview — same plugin, mounted via configurePreviewServer
+npm run build && UNUSUAL_WHALES_SECRET=… npm run preview
+
+# prod    — standalone Node server (server/index.ts) serves dist/ + /api/prices
+npm run build && UNUSUAL_WHALES_SECRET=… node server/index.ts   # PORT defaults to 8080
+```
+
+`server/index.ts` is the deploy entrypoint for hosts without Vite (e.g. Railway): set `UNUSUAL_WHALES_SECRET` (and optionally `PORT`) and run it after `npm run build`.
+
 ## Deployment
 
-`npm run build` emits `dist/` — a self-contained static bundle (`index.html`, hashed JS/CSS in `dist/assets/`, plus `public/` passthroughs). The build reads no environment variables, so the same `dist/` deploys identically across hosts. Local smoke-test:
+`npm run build` emits `dist/` — a self-contained static bundle (`index.html`, hashed JS/CSS in `dist/assets/`, plus `public/` passthroughs). The SPA itself reads no environment variables, so the static `dist/` deploys identically across hosts; only the `/api/prices` proxy (see above) needs the server runtime and `UNUSUAL_WHALES_SECRET`. Local smoke-test:
 
 ```bash
 npm run build
