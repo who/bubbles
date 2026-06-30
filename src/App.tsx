@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   FileDropzone,
+  PositionsTable,
   PrivacyModeProvider,
   PrivacyToggle,
   StatsStrip,
@@ -245,6 +246,7 @@ function App() {
               <div className="app__chart-slot">
                 <BubbleChart data={contracts} unrealized={unrealized} />
               </div>
+              <PositionsTable contracts={contracts} unrealized={unrealized} />
             </section>
             {warnings.length > 0 ? (
               <details className="app__warnings">

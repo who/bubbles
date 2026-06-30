@@ -21,6 +21,14 @@ export const formatRatio = (n: number | null): string => {
   return n.toFixed(2);
 };
 
+// Unsigned currency, used for prices/levels that are always positive (entry,
+// exit). Masks to MASKED_AMOUNT under privacy mode like the signed variant.
+export const formatPrice = (n: number, masked = false): string => {
+  if (masked) return MASKED_AMOUNT;
+  if (!Number.isFinite(n)) return DASH;
+  return currencyFmt.format(n);
+};
+
 export const formatSignedCurrency = (n: number, masked = false): string => {
   if (masked) return MASKED_AMOUNT;
   if (!Number.isFinite(n)) return DASH;

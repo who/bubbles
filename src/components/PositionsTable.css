@@ -1,0 +1,74 @@
+.positions-table {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.positions-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.positions-table__caption {
+  caption-side: top;
+  text-align: left;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.positions-table__table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.positions-table__col-num {
+  text-align: right;
+}
+
+.positions-table__table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-divider);
+  color: var(--color-text-primary);
+}
+
+.positions-table__occ {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: nowrap;
+}
+
+.positions-table__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.positions-table__pl--gain {
+  color: var(--color-success-fg);
+  font-weight: 600;
+}
+
+.positions-table__pl--loss {
+  color: var(--color-loss-fg);
+  font-weight: 600;
+}
+
+/* Unrealized P/L is neutral gray, mirroring the dotted/pastel bubble treatment
+   so it reads as "not yet realized" rather than a booked gain or loss. */
+.positions-table__pl--unrealized {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.positions-table__empty {
+  padding: 16px 12px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
